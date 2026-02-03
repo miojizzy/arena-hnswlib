@@ -1,0 +1,23 @@
+# Product Context
+
+This document explains why this project exists, the problems it solves, and the user experience goals.
+
+## Problem Statement
+[Describe the problem this project aims to solve.]
+
+**项目缘起**：  
+随着 AI、推荐系统等领域对大规模向量检索需求的增长，现有库（如 FAISS、Annoy）虽强大，但存在集成复杂、定制性不足等问题。arena-hnswlib 旨在提供一个轻量、易用、可扩展的 C++ 向量检索库。
+
+**解决的问题**：
+- 高维向量的高效 ANN 检索
+- 便于集成到现有 C++ 项目
+- 便于二次开发和算法实验
+
+**用户体验目标**：
+- 简单易用的 API
+- 详细的文档与示例
+- 可靠的测试与性能基准
+## Target Audience
+[Define the target audience for this project.]
+
+## User Experience Goals
