@@ -14,18 +14,3 @@
 
 **依赖管理**：
 - 通过 CMake FetchContent 拉取 GoogleTest/Benchmark
-# Tech Context
-
-This document provides information about the technologies used, development setup, technical constraints, and dependencies.
-
-## Technologies Used
-- [List the technologies used in the project.]
-
-## Development Setup
-[Describe the development setup, including tools and environments.]
-
-## Technical Constraints
-- [List any technical constraints for the project.]
-
-## Dependencies
-- [List the dependencies of the project.]

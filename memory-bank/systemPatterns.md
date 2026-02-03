@@ -15,18 +15,11 @@
 **组件关系**：
 - arena_hnswlib.h 依赖 data_store.h、math_utils.h
 - 测试与 benchmark 通过链接 header-only 库进行
-# System Patterns
 
-- c++17
-
-## System Architecture
-[Describe the overall system architecture.]
-
-## Key Technical Decisions
-- [List the key technical decisions made for the arena hnswlib.]
-
-## Design Patterns
-- [List the design patterns used in the arena hnswlib.]
-
-## Component Relationships
-[Describe the relationships between different components in the system.]
+**目录模块说明**
+- include 存放库的头文件
+    - arena-hnswlib 为hnswlib的优化版本 
+- src 存放库源码（由于当前仅有头文件，暂时空）
+- test 存放测试用例
+    - utest 存放单元测试
+- script 存放脚本，包括编译、测试、性能测试等，在项目根目录执行脚本

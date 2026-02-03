@@ -1,15 +1,9 @@
-# Progress
-
-This document tracks what works, what is left to build, the current status, and known issues.
-
-## What Works
-
-## What's Left to Build
 
 **已完成**：
 - 项目基础结构搭建
 - math_utils、bruteforce、data_store 等模块初步实现
 - 单元测试与基准测试环境搭建
+- BruteForceSearch searchKnn 单元测试已补充，覆盖多点检索与距离/标签正确性
 
 **待完成**：
 - HNSW 算法核心功能完善
@@ -22,7 +16,3 @@ This document tracks what works, what is left to build, the current status, and 
 **已知问题**：
 - 部分测试用例覆盖率不足
 - CMake 脚本可进一步优化
-[Describe the current status of the project.]
-
-## Known Issues
-- [List any known issues or bugs.]
