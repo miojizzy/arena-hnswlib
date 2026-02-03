@@ -29,6 +29,15 @@ jobs:
               brew install cmake
           fi
 
+      - name: Cache CMake FetchContent
+        uses: actions/cache@v3
+        with:
+          path: |
+            build/_deps
+          key: ${{ runner.os }}-cmake-deps-${{ hashFiles('CMakeLists.txt', 'src/**', 'include/**') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-deps-
+
       - name: Configure CMake
         run: cmake -S . -B build
 
