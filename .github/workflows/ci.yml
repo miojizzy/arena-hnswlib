@@ -26,6 +26,7 @@ jobs:
           elif [ ${{ runner.os }} == 'macOS' ]; then
               brew update
               brew install cmake
+          fi
 
       - name: Configure CMake
         run: cmake -S . -B build
