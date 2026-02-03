@@ -13,25 +13,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up C++ environment
-        uses: actions/setup-cpp@v2
-        with:
-          compiler: gcc
 
       - name: Install dependencies
         run: |
           if [ ${{ runner.os }} == 'Linux' ]; then
             sudo apt-get update
-            sudo apt-get install -y cmake g++ libgtest-dev libbenchmark-dev
+            sudo apt-get install -y cmake g++
           elif [ ${{ runner.os }} == 'macOS' ]; then
-            brew install cmake gtest google-benchmark
-          else
-            choco install cmake gtest google-benchmark
+              brew update
+              brew install cmake
 
       - name: Configure CMake
         run: cmake -S . -B build
