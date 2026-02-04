@@ -1,5 +1,6 @@
-#pragma once 
 
+#pragma once 
+#include "arena_hnswlib.h"
 #include <cstddef>
 #include <memory>
 #include <cstring>
@@ -49,6 +50,13 @@ public:
         }
         return &data_[id * dataLen_];
     }
+
+    const T* getData(InternalId id) const {
+        if (id >= maxElements_) {
+            return nullptr;
+        }
+        return &data_[id * dataLen_];
+    }
 };
 
 
@@ -84,6 +92,13 @@ public:
     }
 
     T* getData(InternalId id) override {
+        if (id >= maxElements_) {
+            return nullptr; // Return nullptr for invalid ID
+        }
+        return &data_.get()[id * dataLen_];
+    }
+
+    const T* getData(InternalId id) const {
         if (id >= maxElements_) {
             return nullptr; // Return nullptr for invalid ID
         }

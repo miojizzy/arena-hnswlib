@@ -1,18 +1,24 @@
+# Progress
 
-**已完成**：
-- 项目基础结构搭建
-- math_utils、bruteforce、data_store 等模块初步实现
-- 单元测试与基准测试环境搭建
-- BruteForceSearch searchKnn 单元测试已补充，覆盖多点检索与距离/标签正确性
+### What Works
+- BruteForceSearch and DataStore classes are implemented and tested
+- InnerProductSpace and L2Space distance metrics are implemented
+- L2 (Euclidean) distance support using squared L2 for efficiency
+- HNSW (HierarchicalNSW) class: core structure and most methods implemented
+- Unit tests for BruteForceSearch, DataStore, HierarchicalNSW, and distance metrics (see tests/unit/)
 
-**待完成**：
-- HNSW 算法核心功能完善
-- 更多测试用例与性能优化
-- 完善文档与示例
+### What Remains
+- Further optimize and test HNSW index logic (neighbor selection, level assignment, search)
+- Add more comprehensive and edge-case unit tests for HNSW
+- Document all public APIs and clarify usage patterns
+- Add/expand benchmarks for all algorithms
 
-**当前状态**：
-- 项目处于核心功能开发与测试阶段
+### Current Status
+- BruteForceSearch and DataStore: stable
+- InnerProductSpace: stable
+- HNSW: core logic implemented, basic and edge-case tests present, some advanced features may be incomplete
 
-**已知问题**：
-- 部分测试用例覆盖率不足
-- CMake 脚本可进一步优化
+### Known Issues
+- HNSW: neighbor update logic and search heuristics may need further validation
+- Some methods in HNSW are complex and could use more comments
+- No benchmarking or performance tests yet

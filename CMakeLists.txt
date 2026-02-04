@@ -12,10 +12,9 @@ add_library(arena-hnswlib INTERFACE)
 target_include_directories(arena-hnswlib INTERFACE include)
 
 # Add tests
+
 enable_testing()
-add_executable(test_math_utils tests/unit/test_math_utils.cpp)
-target_link_libraries(test_math_utils arena-hnswlib gtest gtest_main)
-add_test(NAME MathUtilsTest COMMAND test_math_utils)
+add_subdirectory(tests/unit)
 
 # Add benchmarks
 add_executable(benchmark_math_utils benchmarks/benchmark_math_utils.cpp)

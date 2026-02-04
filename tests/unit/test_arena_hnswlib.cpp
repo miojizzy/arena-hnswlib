@@ -5,12 +5,16 @@
 using namespace arena_hnswlib;
 
 // Mock class for SpaceInterface
+
 template<typename dist_t>
 class MockSpace : public SpaceInterface<dist_t> {
+    size_t dim_ = 128;
+    size_t data_size_ = 128 * sizeof(dist_t);
+    DISTFUNC<dist_t> dist_func_ = nullptr;
 public:
-    size_t getDim() override { return 128; }
-    size_t getDataSize() override { return 128 * sizeof(dist_t); }
-    DISTFUNC<dist_t> getDistFunc() override { return nullptr; }
+    const size_t& getDim() const override { return dim_; }
+    const size_t& getDataSize() const override { return data_size_; }
+    const DISTFUNC<dist_t>& getDistFunc() const override { return dist_func_; }
 };
 
 // Mock class for AlgorithmInterface

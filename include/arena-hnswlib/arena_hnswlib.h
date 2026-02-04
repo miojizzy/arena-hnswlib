@@ -9,6 +9,7 @@ namespace arena_hnswlib {
 
 using LabelType = uint32_t;
 using InternalId = uint32_t;
+using LevelId = uint32_t;
 
 template<typename dist_t>
 using DISTFUNC = dist_t(*)(const void*, const void*, const void*);
@@ -20,11 +21,11 @@ class SpaceInterface {
 public:
     virtual ~SpaceInterface() {}
 
-    virtual size_t getDim() = 0;
+    virtual const size_t& getDim() const = 0;
 
-    virtual size_t getDataSize() = 0;
+    virtual const size_t& getDataSize() const = 0;
 
-    virtual DISTFUNC<dist_t> getDistFunc() = 0;
+    virtual const DISTFUNC<dist_t>& getDistFunc() const = 0;
 
 };
 

@@ -1,15 +1,16 @@
-**项目名称**：arena-hnswlib
+## Project Name
+arena-hnswlib
 
-**项目目标**：  
-开发一个基于 HNSW（Hierarchical Navigable Small World）算法的高性能向量检索库，支持高效的近似最近邻（ANN）搜索。项目采用 C++17，目标为易用、可扩展、性能优越，适合学术与工业场景。
+## Project Goals
+Develop a high-performance vector search library based on the HNSW (Hierarchical Navigable Small World) algorithm, supporting efficient Approximate Nearest Neighbor (ANN) search. The project uses C++17 and aims for ease of use, extensibility, and superior performance, suitable for both academic and industrial scenarios.
 
-**核心需求**：
-- 提供高效的向量插入、删除、检索接口
-- 支持多种距离度量（如欧氏、内积等）
-- 提供单元测试与基准测试
-- 兼容主流 C++ 构建系统（CMake）
+## Core Requirements
+- Provide efficient interfaces for vector insertion, deletion, and search
+- Support multiple distance metrics (e.g., Euclidean, Inner Product)
+- Provide unit tests and benchmarks
+- Compatible with mainstream C++ build systems (CMake)
 
-**范围说明**：
-- 仅实现核心算法与数据结构
-- 不包含分布式、持久化等高级特性
-- 以 header-only 形式为主，便于集成
+## Scope
+- Only implements core algorithms and data structures
+- Does not include advanced features such as distributed or persistent storage
+- Primarily header-only for easy integration

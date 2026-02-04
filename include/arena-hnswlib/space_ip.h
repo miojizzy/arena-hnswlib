@@ -38,15 +38,15 @@ public:
     }
     ~InnerProductSpace() override {}
 
-    DISTFUNC<dist_t> getDistFunc() override {
+    const DISTFUNC<dist_t>& getDistFunc() const override {
         return fstdistfunc_;
     }
 
-    size_t getDim() override {
+    const size_t& getDim() const override {
         return dim_;
     }
 
-    size_t getDataSize() override {
+    const size_t& getDataSize() const override {
         return data_size_;
     }
 };

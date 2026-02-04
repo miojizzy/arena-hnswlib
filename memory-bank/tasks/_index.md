@@ -1,13 +1,11 @@
 # Tasks Index
 
 ## In Progress
-- [List tasks that are currently in progress.]
 
 ## Pending
-- [List tasks that are planned but not yet started.]
 
 ## Completed
-- [List tasks that have been completed.]
+- [TASK002] Support Space L2 - Completed on 2026-02-06
+- [TASK001] Project setup - Completed on 2026-02-05
 
 ## Abandoned
-- [List tasks that have been abandoned.]
