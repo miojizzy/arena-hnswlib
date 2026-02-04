@@ -9,23 +9,23 @@ namespace arena_hnswlib {
 
 template<typename dist_t>
 class BruteForceSearch : public AlgorithmInterface<dist_t> {
-public:
     const size_t maxElements_;
     const size_t dim_;
     const size_t data_size_;
     const DISTFUNC<dist_t> dist_func_;
 
-
-    size_t current_count_ = 0;
     DataStoreAligned<dist_t, 64> point_store_;
     DataStore<LabelType> label_store_;
+    
+    size_t current_count_;
 
+public:
     BruteForceSearch(SpacePtr<dist_t> s, size_t maxElements) 
         : AlgorithmInterface<dist_t>(std::move(s)), maxElements_(maxElements),
           dim_(this->space_->getDim()), data_size_(this->space_->getDataSize()),
           dist_func_(this->space_->getDistFunc()),
-          point_store_(dim_, maxElements_), label_store_(1, maxElements_) {
-    }
+          point_store_(dim_, maxElements_), label_store_(1, maxElements_),
+          current_count_(0) {}
 
     void addPoint(const void *data_point, LabelType label_type) override {
         if (current_count_ >= maxElements_) {

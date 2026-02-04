@@ -1,6 +1,9 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <queue>
+#include <type_traits>
 
 namespace arena_hnswlib {
 
