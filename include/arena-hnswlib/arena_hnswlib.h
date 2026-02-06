@@ -5,6 +5,19 @@
 #include <queue>
 #include <type_traits>
 
+#ifdef __AVX__
+    #define USE_AVX
+    #include <x86intrin.h>
+#endif
+
+#if defined(__GNUC__)
+    #define PORTABLE_ALIGN32 __attribute__((aligned(32)))
+    #define PORTABLE_ALIGN64 __attribute__((aligned(64)))
+#else
+    #define PORTABLE_ALIGN32 __declspec(align(32))
+    #define PORTABLE_ALIGN64 __declspec(align(64))
+#endif
+
 namespace arena_hnswlib {
 
 using LabelType = uint32_t;
@@ -12,7 +25,7 @@ using InternalId = uint32_t;
 using LevelId = uint32_t;
 
 template<typename dist_t>
-using DISTFUNC = dist_t(*)(const void*, const void*, const void*);
+using DISTFUNC = dist_t(*)(const dist_t*, const dist_t*, const size_t);
 
 template<typename dist_t>
 class SpaceInterface {

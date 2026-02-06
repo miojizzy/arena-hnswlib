@@ -16,13 +16,8 @@ InnerProduct(const dist_t *pVect1, const dist_t *pVect2, const size_t dim) {
 
 template<typename dist_t> 
 inline static dist_t 
-InnerProductDistance(const void *pVect1, const void *pVect2, const void *qty_ptr) {
-    const auto& inner_product_func = InnerProduct<dist_t>;
-    return 1.0f - inner_product_func(
-        static_cast<const dist_t *>(pVect1), 
-        static_cast<const dist_t *>(pVect2), 
-        *static_cast<const size_t *>(qty_ptr)
-    );
+InnerProductDistance(const dist_t *pVect1, const dist_t *pVect2, const size_t dim) {
+    return 1.0f - InnerProduct<dist_t>(pVect1, pVect2, dim);
 }
 
 template<typename dist_t>

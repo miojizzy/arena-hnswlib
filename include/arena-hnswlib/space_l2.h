@@ -22,13 +22,8 @@ inline static dist_t L2Squared(const dist_t* pVect1, const dist_t* pVect2, size_
 // Returns sum of squared differences between two vectors
 template<typename dist_t> 
 inline static dist_t 
-L2SquaredDistance(const void *pVect1, const void *pVect2, const void *qty_ptr) {
-    const auto& l2_squared_func = L2Squared<dist_t>;
-    return l2_squared_func(
-        static_cast<const dist_t *>(pVect1),
-        static_cast<const dist_t *>(pVect2),
-        *static_cast<const size_t *>(qty_ptr)
-    );
+L2SquaredDistance(const dist_t *pVect1, const dist_t *pVect2, const size_t dim) {
+    return L2Squared<dist_t>(pVect1, pVect2, dim);
 }
 
 

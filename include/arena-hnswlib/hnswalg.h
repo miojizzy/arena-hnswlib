@@ -168,7 +168,7 @@ public:
         // HNSW index update logic goes here
         // overhigh levels search
         auto nearest_id = enterpoint_id;
-        auto nearest_dist = dist_func_(data_point, point_store_.getData(enterpoint_id), &dim_);
+        auto nearest_dist = dist_func_(static_cast<const dist_t*>(data_point), point_store_.getData(enterpoint_id), dim_);
         for (size_t level = link_lists_.getMaxLevel(); level > link_lists_.getLevel(internal_id); --level) {
             std::tie(nearest_dist, nearest_id) = searchNearestAtLevel(data_point, nearest_id, nearest_dist, level);
         }
@@ -185,7 +185,7 @@ public:
 
         auto candidates = std::priority_queue<std::pair<dist_t, InternalId>>();
         for(auto cand: all_neighbors) {
-            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), &dim_);
+            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), dim_);
             candidates.push({dist, cand});
         }
         while (candidates.size() > efConstruction_) {
@@ -214,7 +214,7 @@ public:
         all_neighbors.emplace_back(new_id);
         auto candidates = std::priority_queue<std::pair<dist_t, InternalId>>();
         for(auto cand: all_neighbors) {
-            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), &dim_);
+            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), dim_);
             candidates.push({dist, cand});
         }
         while (candidates.size() > efConstruction_) {
@@ -241,7 +241,7 @@ public:
             const LinkListView& link_list = link_lists_.getLinkList(nearest_id, level);
             for (size_t i = 0; i < link_list.size; ++i) {
                 InternalId candidate_id = link_list.data[i];
-                dist_t dist = dist_func_(query_data, point_store_.getData(candidate_id), &dim_);
+                dist_t dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (dist < nearest_dist) {
                     nearest_dist = dist;
                     nearest_id = candidate_id;
@@ -300,7 +300,7 @@ public:
                 dist_t curdist = dist_func_(
                         point_store_.getData(second_pair.second),
                         point_store_.getData(curent_pair.second),
-                        &dim_);
+                        dim_);
                 if (curdist < dist_to_query) {
                     good = false;
                     break;
@@ -341,7 +341,7 @@ public:
         // HNSW index update logic goes here
         // overhigh levels search
         auto nearest_id = enterpoint_id;
-        auto nearest_dist = dist_func_(query_data, point_store_.getData(enterpoint_id), &dim_);
+        auto nearest_dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(enterpoint_id), dim_);
         for (size_t level = link_lists_.getMaxLevel() + 1; level-- > 0; ) {
             std::tie(nearest_dist, nearest_id) = searchNearestAtLevel(query_data, nearest_id, nearest_dist, level);
         }
@@ -381,7 +381,7 @@ public:
                     continue;
                 }
                 visited.insert(candidate_id);
-                dist_t dist = dist_func_(query_data, point_store_.getData(candidate_id), &dim_);
+                dist_t dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (topCandidates.size() < ef || dist < topCandidates.top().first) {
                     searchCandidates.emplace(dist, candidate_id);
                     topCandidates.emplace(dist, candidate_id);

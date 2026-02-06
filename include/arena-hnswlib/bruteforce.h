@@ -42,7 +42,7 @@ public:
         std::priority_queue<std::pair<dist_t, LabelType>> result;
         for (size_t i = 0; i < current_count_; i++) {
             const dist_t* data_point = point_store_.getData(i);
-            dist_t dist = dist_func_(query_data, data_point, &dim_);
+            dist_t dist = dist_func_(data_point, static_cast<const dist_t*>(query_data), dim_);
             LabelType label = *(label_store_.getData(i));
             if (result.size() < k) {
                 result.emplace(dist, label);

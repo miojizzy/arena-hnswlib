@@ -52,7 +52,7 @@ TEST(L2SpaceTest, DistanceFunctionWorks) {
     size_t dim = 3;
     
     auto distFunc = space.getDistFunc();
-    float result = distFunc(vec1, vec2, &dim);
+    float result = distFunc(vec1, vec2, dim);
     EXPECT_FLOAT_EQ(result, 27.0f);
 }
 
@@ -63,8 +63,8 @@ TEST(L2SpaceTest, DistanceIsSymmetric) {
     size_t dim = 3;
     
     auto distFunc = space.getDistFunc();
-    float dist1 = distFunc(vec1, vec2, &dim);
-    float dist2 = distFunc(vec2, vec1, &dim);
+    float dist1 = distFunc(vec1, vec2, dim);
+    float dist2 = distFunc(vec2, vec1, dim);
     EXPECT_FLOAT_EQ(dist1, dist2);
 }
 
@@ -75,7 +75,7 @@ TEST(L2SpaceTest, DistanceIsNonNegative) {
     size_t dim = 3;
     
     auto distFunc = space.getDistFunc();
-    float result = distFunc(vec1, vec2, &dim);
+    float result = distFunc(vec1, vec2, dim);
     EXPECT_GE(result, 0.0f);
 }
 
@@ -87,9 +87,9 @@ TEST(L2SpaceTest, TriangleInequality) {
     size_t dim = 3;
     
     auto distFunc = space.getDistFunc();
-    float d12 = distFunc(vec1, vec2, &dim);
-    float d23 = distFunc(vec2, vec3, &dim);
-    float d13 = distFunc(vec1, vec3, &dim);
+    float d12 = distFunc(vec1, vec2, dim);
+    float d23 = distFunc(vec2, vec3, dim);
+    float d13 = distFunc(vec1, vec3, dim);
     
     // For squared distance, the triangle inequality becomes:
     // sqrt(d13) <= sqrt(d12) + sqrt(d23)
