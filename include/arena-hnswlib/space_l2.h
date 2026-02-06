@@ -21,6 +21,7 @@ L2Squared(const void *pVect1, const void *pVect2, const void *qty_ptr) {
 // L2 Space class using squared Euclidean distance metric
 // Note: This uses squared L2 distance (without square root) for efficiency
 // The ranking is preserved since sqrt is a monotonic function
+// score = x1
 template<typename dist_t>
 class L2Space : public SpaceInterface<dist_t> {
     DISTFUNC<dist_t> fstdistfunc_;

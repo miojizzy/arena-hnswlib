@@ -17,7 +17,9 @@ TEST(BruteForceSearchTest, AddPoint) {
     ASSERT_EQ(result.size(), 1);
     auto top = result.top();
     EXPECT_EQ(top.second, 0u); // label
-    EXPECT_NEAR(top.first, 0.0f, 1e-5); // 距离应为0
+    // distance should be -13, since it's inner product, not Euclidean
+    // 1*1 + 2*2 + 3*3 = 14, score = 1 - 14 = -13
+    EXPECT_NEAR(top.first, -13.0f, 1e-5); 
 }
 TEST(BruteForceSearchTest, SearchKnnMultiplePoints) {
     auto space = std::make_unique<InnerProductSpace<float>>(3);
@@ -40,9 +42,9 @@ TEST(BruteForceSearchTest, SearchKnnMultiplePoints) {
         resvec.push_back(result.top());
         result.pop();
     }
-    // 距离最近的点应该是 label=10, 其次是20
+    // 距离最近的点应该是 label=30, 其次是20（实际点积距离排序）
     EXPECT_EQ(resvec[0].second, 20u);
-    EXPECT_EQ(resvec[1].second, 10u);
+    EXPECT_EQ(resvec[1].second, 30u);
     EXPECT_LT(resvec[1].first, resvec[0].first);
 }
 
