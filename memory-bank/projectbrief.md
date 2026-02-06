@@ -14,3 +14,8 @@ Develop a high-performance vector search library based on the HNSW (Hierarchical
 - Only implements core algorithms and data structures
 - Does not include advanced features such as distributed or persistent storage
 - Primarily header-only for easy integration
+
+## Quick Start Commands
+- build: `sh script/build.sh`
+- test: `sh script/run_test.sh`
+- benchmark: `sh script/run_benchmarks.sh`

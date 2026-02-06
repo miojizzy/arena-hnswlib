@@ -23,15 +23,12 @@ tools: [
   'web/fetch',
   'web/githubRepo',
   # GitHub 相关
-  'github/issue_read',
   'github.vscode-pull-request-github/issue_fetch',
   'github.vscode-pull-request-github/activePullRequest',
   # VSCode 相关
   'vscode/askQuestions',
   'vscode/extensions',
   'vscode/vscodeAPI',
-  # MCP/外部服务
-  'azure-mcp/search',
 ]
 agents: []
 handoffs:
