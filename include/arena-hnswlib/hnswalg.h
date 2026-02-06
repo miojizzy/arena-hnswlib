@@ -4,6 +4,7 @@
 #include "arena_hnswlib.h"
 #include "data_store.h"
 #include <random>
+#include <stdexcept>
 
 namespace arena_hnswlib {
 

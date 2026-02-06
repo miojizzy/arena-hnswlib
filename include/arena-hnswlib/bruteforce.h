@@ -3,6 +3,7 @@
 #include "arena_hnswlib.h"
 #include "data_store.h"
 #include <cstdint>
+#include <stdexcept>
 
 namespace arena_hnswlib {
 

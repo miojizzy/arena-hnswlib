@@ -20,8 +20,8 @@ add_subdirectory(tests/unit)
 add_executable(benchmark_math_utils benchmarks/benchmark_math_utils.cpp)
 target_link_libraries(benchmark_math_utils arena-hnswlib benchmark)
 
-# Correctly link benchmark target
-target_link_libraries(benchmark_math_utils arena-hnswlib benchmark)
+add_executable(benchmark_index benchmarks/benchmark_index.cpp)
+target_link_libraries(benchmark_index arena-hnswlib benchmark)
 
 # Include FetchContent module
 include(FetchContent)

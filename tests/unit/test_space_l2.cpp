@@ -9,7 +9,7 @@ TEST(L2SquaredTest, FloatL2Squared) {
     float vec2[] = {4.0f, 5.0f, 6.0f};
     size_t dim = 3;
     // (4-1)^2 + (5-2)^2 + (6-3)^2 = 9 + 9 + 9 = 27
-    float result = L2Squared<float>(vec1, vec2, &dim);
+    float result = L2Squared<float>(vec1, vec2, dim);
     EXPECT_FLOAT_EQ(result, 27.0f);
 }
 
@@ -17,7 +17,7 @@ TEST(L2SquaredTest, DoubleL2Squared) {
     double vec1[] = {1.0, 2.0, 3.0};
     double vec2[] = {4.0, 5.0, 6.0};
     size_t dim = 3;
-    double result = L2Squared<double>(vec1, vec2, &dim);
+    double result = L2Squared<double>(vec1, vec2, dim);
     EXPECT_DOUBLE_EQ(result, 27.0);
 }
 
@@ -25,7 +25,7 @@ TEST(L2SquaredTest, IdenticalVectors) {
     float vec1[] = {1.0f, 2.0f, 3.0f};
     float vec2[] = {1.0f, 2.0f, 3.0f};
     size_t dim = 3;
-    float result = L2Squared<float>(vec1, vec2, &dim);
+    float result = L2Squared<float>(vec1, vec2, dim);
     EXPECT_FLOAT_EQ(result, 0.0f);
 }
 
@@ -34,7 +34,7 @@ TEST(L2SquaredTest, NegativeValues) {
     float vec2[] = {1.0f, 2.0f, 3.0f};
     size_t dim = 3;
     // (1-(-1))^2 + (2-(-2))^2 + (3-(-3))^2 = 4 + 16 + 36 = 56
-    float result = L2Squared<float>(vec1, vec2, &dim);
+    float result = L2Squared<float>(vec1, vec2, dim);
     EXPECT_FLOAT_EQ(result, 56.0f);
 }
 
