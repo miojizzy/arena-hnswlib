@@ -1,0 +1,16 @@
+{
+  "instructions": {
+    "enabled": true,
+    "paths": [
+      ".github/instructions/"
+    ],
+    "defaultStrategy": "merge"
+  },
+  "memoryBank": {
+    "enabled": true,
+    "path": "memory-bank/"
+  },
+  "agents": {
+    "path": ".github/agents/"
+  }
+}
