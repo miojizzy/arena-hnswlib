@@ -4,13 +4,18 @@
     "paths": [
       ".github/instructions/"
     ],
-    "defaultStrategy": "merge"
+    "defaultStrategy": "merge",
+    "autoLoad": true
   },
   "memoryBank": {
     "enabled": true,
-    "path": "memory-bank/"
+    "path": "memory-bank/",
+    "autoLoad": true
   },
   "agents": {
-    "path": ".github/agents/"
+    "enabled": true,
+    "path": ".github/agents/",
+    "autoDiscover": true,
+    "filePattern": "*.agent.md"
   }
 }

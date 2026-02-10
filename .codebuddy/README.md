@@ -13,13 +13,43 @@
 - **enabled**: `true` - 启用指令功能
 - **paths**: `[".github/instructions/"]` - 指令文件所在目录
 - **defaultStrategy**: `"merge"` - 多个指令合并策略
+- **autoLoad**: `true` - 自动加载指令
 
 ### Memory Bank (记忆库)
 - **enabled**: `true` - 启用记忆库功能
 - **path**: `"memory-bank/"` - 记忆库文件所在目录
+- **autoLoad**: `true` - 自动加载记忆库
 
 ### Agents (智能体)
+- **enabled**: `true` - 启用智能体功能
 - **path**: `".github/agents/"` - 智能体定义文件所在目录
+- **autoDiscover**: `true` - 自动发现智能体文件
+- **filePattern**: `"*.agent.md"` - 智能体文件模式
+
+## CNB Workspace 配置
+
+对于 CNB (Cloud Native Build) 在线 workspace，codebuddy 可能需要额外的配置文件：
+
+### 1. VS Code 设置
+- **文件**: `.vscode/settings.json`
+- **作用**: 为 CNB workspace 中的 VS Code 配置 Copilot 和 agent 设置
+
+### 2. GitHub Copilot 配置
+- **文件**: `.copilot-instructions.json` (项目根目录)
+- **文件**: `.github/copilot/instructions.md`
+- **作用**: GitHub Copilot 标准配置位置
+
+### 3. Agent 配置
+- **位置**: `.github/agents/*.agent.md`
+- **格式**: 标准 GitHub Copilot agent 格式，包含 frontmatter 配置
+
+## CNB Workspace 注意事项
+
+CNB workspace 中的 codebuddy 可能需要：
+1. **重启 workspace** 使新配置生效
+2. **检查权限** 确保 codebuddy 可以读取 `.github/agents/` 目录
+3. **验证格式** 确保 agent 文件符合 CNB codebuddy 的格式要求
+4. **查看日志** 如有问题，查看 CNB workspace 的日志输出
 
 ## 当前可用的 Instructions
 
