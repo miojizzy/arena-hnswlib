@@ -1,7 +1,7 @@
 # Dockerfile.cnb - Derived image for CNB / buildpack workflows
 # Inherit from published base image to reuse cached GCC layer
 
-ARG BASE_IMAGE=ghcr.io/ORG/base-gcc:12
+ARG BASE_IMAGE=ghcr.io/miojizzy/base-gcc:12
 FROM ${BASE_IMAGE}
 
 RUN code-server --install-extension cnbcool.cnb-welcome &&\

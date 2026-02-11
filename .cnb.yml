@@ -1,0 +1,14 @@
+$:
+  vscode:
+    - docker:
+        build: .devcontainer/Dockerfile.cnb
+        # build: .ide/Dockerfile
+      services:
+        - vscode
+        - docker
+      # 开发环境启动后会执行的任务
+      stages:
+        - name: ls
+          script: ls -al
+        - name: say hi
+          script: echo "hi"
