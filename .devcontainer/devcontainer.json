@@ -5,16 +5,14 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
 	"features": {
-		"ghcr.io/devcontainers/features/conda:1": {
-			"version": "3.12.0"
-		},
-		"ghcr.io/devcontainers/features/go:1": {
-			"version": "1.23"
-		},
-		"ghcr.io/devcontainers-extra/features/zsh-plugins:0": {},
-		"ghcr.io/ttyrho/devcontainer-features/gcc:1": {
-			"version": "12"
-		}
+		"ghcr.io/devcontainers/features/conda:1": {},
+		"ghcr.io/devcontainers/features/go:1": {},
+		"ghcr.io/ttyrho/devcontainer-features/gcc:1": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {},
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/git-lfs:1": {},
+		"ghcr.io/devcontainers/features/aws-cli:1": {},
+		"ghcr.io/devcontainers/features/nvidia-cuda:2": {}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
