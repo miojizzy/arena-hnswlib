@@ -6,6 +6,7 @@
 	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
 	"features": {
 		"ghcr.io/ttyrho/devcontainer-features/gcc:1": {},
+		"ghcr.io/devcontainers-extra/features/cmake:1": {},
 		"ghcr.io/devcontainers/features/common-utils:2": {},
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/git-lfs:1": {},
