@@ -35,8 +35,11 @@ RUN curl -fsSL https://code-server.dev/install.sh | sh &&\
 #     code-server --install-extension tencent-cloud.coding-copilot &&\
 #     code-server --install-extension bierner.markdown-m
 
-# 安装 ssh 服务，用于支持 VSCode 客户端通过 Remote-SSH 访问开发环境，开发环境需保留 apt-get 缓存
-RUN apt-get update && apt-get install -y wget unzip lsof nload htop net-tools dnsutils openssh-server zsh
+# 安装 ssh 服务和 docker CLI/compose，用于支持 Remote-SSH 和访问宿主 docker
+RUN apt-get update && apt-get install -y \
+    wget unzip lsof nload htop net-tools dnsutils openssh-server zsh \
+    docker.io docker-compose-plugin && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 安装 uv
 RUN sh -c "$(curl -LsSf https://astral.sh/uv/install.sh)" && uv python install
