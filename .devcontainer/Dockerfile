@@ -1,14 +1,15 @@
-FROM debian:bookworm
+FROM debian:bookworm 
 
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
     apt-get update && \
-    apt-get install -y rsync jq git git-lfs vim curl gettext-base && \
+    apt-get install -y rsync jq git git-lfs vim curl gettext-base g++-12 make cmake && \
     apt-get clean && \
     git lfs install && \
     rm -rf /var/lib/apt/lists/* && \
     rm /root/.gitconfig
   
 RUN ln -sf /bin/bash /bin/sh
+
 
 
 
