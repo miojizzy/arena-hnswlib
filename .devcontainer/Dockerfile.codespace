@@ -1,0 +1,10 @@
+# Dockerfile.codespace - Derived image for Codespaces / devcontainer
+# Inherit from a published base image (set BASE_IMAGE when building)
+
+ARG BASE_IMAGE=ghcr.io/ORG/base-gcc:12
+FROM ${BASE_IMAGE}
+
+RUN code-server --install-extension GitHub.copilot-chat
+
+WORKDIR /workspace
+COPY . /workspace
