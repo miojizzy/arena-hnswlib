@@ -1,5 +1,4 @@
 # Dockerfile.cnb - Derived image for CNB / buildpack workflows
-# Inherit from published base image to reuse cached GCC layer
 
 FROM ghcr.io/miojizzy/base-gcc:12
 

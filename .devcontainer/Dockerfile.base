@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install -y \
 # 安装 uv
 RUN sh -c "$(curl -LsSf https://astral.sh/uv/install.sh)" && uv python install
 
-# COPY scripts ./scripts
-
 # 安装 zsh、Oh My Zsh 及其插件（参考 GitHub devcontainers features/common-utils 配置）
 RUN apt-get install -y zsh
 
