@@ -2,7 +2,7 @@
 
 FROM ghcr.io/miojizzy/base-gcc:12
 
-RUN code-server --install-extension GitHub.copilot-chat
+# RUN code-server --install-extension GitHub.copilot-chat
 
 WORKDIR /workspace
 COPY . /workspace
