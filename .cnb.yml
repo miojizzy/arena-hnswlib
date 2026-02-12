@@ -1,8 +1,9 @@
 $:
   vscode:
     - docker:
-        build: .devcontainer/Dockerfile.cnb
+        # build: .devcontainer/Dockerfile.cnb
         # build: .ide/Dockerfile
+        image: mcr.microsoft.com/devcontainers/universal:linux
       services:
         - vscode
         - docker
