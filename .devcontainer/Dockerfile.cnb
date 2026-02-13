@@ -24,7 +24,6 @@ RUN apt-get update && apt-get install -y \
     python3.12-dev \
     python3-pip \
     zsh \
-    wget \
     unzip \
     lsof \
     nload \
@@ -33,7 +32,7 @@ RUN apt-get update && apt-get install -y \
     dnsutils \
     openssh-server \
     docker.io \
-    docker-compose-plugin \
+    docker-compose \
     && ln -sf /usr/bin/python3.12 /usr/bin/python3 \
     && ln -sf /usr/bin/g++-13 /usr/bin/g++ \
     && ln -sf /usr/bin/gcc-13 /usr/bin/gcc \
