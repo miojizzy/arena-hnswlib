@@ -1,9 +1,0 @@
-{
-  "instructions": [
-    ".github/instructions/**/*.md"
-  ],
-  "agents": [
-    ".github/agents/**/*.agent.md"
-  ],
-  "memoryBank": "memory-bank/"
-}
