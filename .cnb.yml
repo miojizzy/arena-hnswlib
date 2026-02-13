@@ -33,6 +33,9 @@ x-sync-template: &sync-template
         script: |
           LATEST_MSG=$(git log -1 --pretty=%B)
 
+          git config --global user.email "cnb-sync@bot.com"
+          git config --global user.name "cnb-sync bot"
+
           GIT_COMMITTER_DATE="$(git log -1 --format=%ci)" \
           git commit --amend -m "[sync] $LATEST_MSG" --no-edit
 

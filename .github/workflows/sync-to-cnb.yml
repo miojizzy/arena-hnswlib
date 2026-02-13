@@ -34,6 +34,9 @@ jobs:
           # 获取最新commit的msg
           LATEST_MSG=$(git log -1 --pretty=%B)
 
+          git config --global user.email "gh-sync@bot.com"
+          git config --global user.name "gh-sync bot"
+
           # 修改最新commit的msg，添加[sync]前缀
           GIT_COMMITTER_DATE="$(git log -1 --format=%ci)" \
           git commit --amend -m "[sync] $LATEST_MSG" --no-edit
