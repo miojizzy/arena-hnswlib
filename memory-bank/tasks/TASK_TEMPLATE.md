@@ -1,37 +1,37 @@
-# [Task ID] - [Task Name]
+# [任务ID] - [任务名称]
 
-**Status:** [Pending/In Progress/Completed/Abandoned]  
-**Added:** [Date Added]  
-**Updated:** [Date Last Updated]
+**状态：** [待处理/进行中/已完成/已放弃]
+**添加日期：** [添加日期]
+**更新日期：** [最后更新日期]
 
-## Original Request
-[The original task description as provided by the user.]
+## 原始需求
+[用户提供的原始任务描述。]
 
-## Thought Process
-[Documentation of the discussion and reasoning that shaped the approach to this task.]
+## 思考过程
+[记录讨论和推理过程，说明如何形成本任务的处理方式。]
 
-## Implementation Plan
-- [Step 1]
-- [Step 2]
-- [Step 3]
+## 实现计划
+- [步骤1]
+- [步骤2]
+- [步骤3]
 
-## Progress Tracking
+## 进度追踪
 
-**Overall Status:** [Not Started/In Progress/Blocked/Completed] - [Completion Percentage]
+**整体状态：** [未开始/进行中/阻塞/已完成] - [完成百分比]
 
-### Subtasks
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 1.1 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
-| 1.2 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
-| 1.3 | [Subtask description] | [Complete/In Progress/Not Started/Blocked] | [Date] | [Any relevant notes] |
+### 子任务
+| ID | 描述 | 状态 | 更新日期 | 备注 |
+|----|------|------|----------|------|
+| 1.1 | [子任务描述] | [已完成/进行中/未开始/阻塞] | [日期] | [相关备注] |
+| 1.2 | [子任务描述] | [已完成/进行中/未开始/阻塞] | [日期] | [相关备注] |
+| 1.3 | [子任务描述] | [已完成/进行中/未开始/阻塞] | [日期] | [相关备注] |
 
-## Progress Log
-### [Date]
-- Updated subtask 1.1 status to Complete
-- Started work on subtask 1.2
-- Encountered issue with [specific problem]
-- Made decision to [approach/solution]
+## 进度日志
+### [日期]
+- 更新子任务1.1状态为已完成
+- 开始处理子任务1.2
+- 遇到[具体问题]
+- 决定采用[方案/解决方法]
 
-### [Date]
-- [Additional updates as work progresses]
+### [日期]
+- [随着工作进展添加更多更新]

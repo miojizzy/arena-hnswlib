@@ -1,12 +1,12 @@
-# Tasks Index
+# 任务索引
 
-## In Progress
+## 进行中
 
-## Pending
+## 待处理
 
-## Completed
-- [TASK003] Benchmark Bruteforce vs HNSWalg - Completed on 2026-02-06
-- [TASK002] Support Space L2 - Completed on 2026-02-06
-- [TASK001] Project setup - Completed on 2026-02-05
+## 已完成
+- [TASK003] Bruteforce与HNSW算法基准测试 - 2026-02-06完成
+- [TASK002] 支持L2空间 - 2026-02-06完成
+- [TASK001] 项目设置 - 2026-02-05完成
 
-## Abandoned
+## 已放弃

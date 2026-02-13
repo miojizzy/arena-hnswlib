@@ -1,92 +1,92 @@
-# TASK002 - Support Space L2
+# TASK002 - 支持L2空间
 
-**Status:** Completed
-**Added:** 2026-02-05  
-**Updated:** 2026-02-06
+**状态：** 已完成
+**添加日期：** 2026-02-05
+**更新日期：** 2026-02-06
 
-## Original Request
-This project is already support 'inner product' on distance metric interface. 
-
-
+## 原始需求
+本项目已在距离度量接口支持"内积"。
 
 
-## Thought Process
-Currently, the project supports vector similarity using the inner product metric. To make the system more flexible and suitable for different use cases, we plan to add support for the Euclidean (L2) distance metric. For efficiency, we will use the squared L2 distance (sum of squared differences) as the metric, since the actual value is only used for ranking and the square root operation can be omitted without affecting the order.
-
-Key considerations:
-- The new metric should be implemented in a way that is consistent with the existing inner product metric, both in interface and usage.
-- The system should allow easy switching between inner product and L2 distance metrics, ideally via a parameter or strategy pattern.
-- All new code should be covered by unit tests, and documentation should be updated to reflect the new feature.
-
-## Implementation Plan
-**Goal:**
-Extend the current vector similarity metric system (which supports inner product) to also support Euclidean (L2) distance, using the squared L2 distance for efficiency (no square root).
-
-**Steps:**
-1. Implement an `L2DistanceSquared` function in `math_utils.h` that computes the sum of squared differences between two vectors, without taking the square root.
-2. Create or extend a space class (e.g., `space_l2.h`) to use `L2DistanceSquared` as its distance metric, following the structure of `space_ip.h`.
-3. Update the main search/retrieval logic (e.g., in `hnswalg.h` or related classes) to allow selecting the distance metric (inner product or L2) via parameter or strategy.
-4. Add or update unit tests (e.g., in `test_math_utils.cpp`, `test_space_ip.cpp`) to verify the correctness of the squared L2 distance implementation.
-5. Update documentation to clarify that the L2 metric is implemented as squared Euclidean distance for ranking purposes.
-
-## Design Details
-- The `L2DistanceSquared` function should take two float pointer arrays and a dimension parameter, and return the sum of squared differences.
-- The new `SpaceL2` class (or similar) should inherit from the same base as `SpaceInnerProduct`, and override the distance calculation method to use `L2DistanceSquared`.
-- The main algorithm (e.g., HNSW) should accept a parameter or enum to select the distance metric at construction or initialization.
-- All interfaces and documentation should clearly indicate that the L2 metric is the squared version, to avoid confusion.
-- Unit tests should cover edge cases (zero vectors, identical vectors, negative values, etc.) and compare results with known correct values.
-
-## Verification
-- Run unit tests to ensure correct squared L2 distance calculation.
-- Check that the retrieval logic correctly switches between metrics.
-- (Optional) Benchmark performance to confirm the efficiency gain from omitting the square root.
-
-## Decisions
-- Use squared L2 distance for performance, as only relative ranking is needed.
-- Clearly indicate "Squared" in function and documentation to avoid confusion.
 
 
-## Progress Tracking
+## 思考过程
+目前，项目支持使用内积度量进行向量相似度计算。为了使系统更灵活并适用于不同用例，我们计划添加对欧几里得（L2）距离度量的支持。为提高效率，我们将使用平方L2距离（差值平方和）作为度量，因为实际值仅用于排序，省略平方根运算不影响顺序。
 
-**Overall Status:** Completed - 100%
+关键考虑：
+- 新度量应以与现有内积度量一致的方式实现，包括接口和使用方式
+- 系统应允许在内积和L2距离度量之间轻松切换，理想情况下通过参数或策略模式
+- 所有新代码应有单元测试覆盖，文档应更新以反映新功能
 
-### Subtasks
-| ID  | Description                                                      | Status      | Updated      | Notes                                    |
-|-----|------------------------------------------------------------------|-------------|--------------|------------------------------------------|
-| 1.1 | Implement L2DistanceSquared function in math_utils.h            | Complete    | 2026-02-06   | Added with template for dist_t types    |
-| 1.2 | Create space_l2.h with L2Space class                             | Complete    | 2026-02-06   | Follows same pattern as space_ip.h       |
-| 1.3 | Add unit tests for L2 distance in test_math_utils.cpp           | Complete    | 2026-02-06   | 6 test cases covering edge cases         |
-| 1.4 | Create test_space_l2.cpp with comprehensive L2Space tests       | Complete    | 2026-02-06   | 9 test cases including mathematical properties |
-| 1.5 | Build and verify all tests pass                                  | Complete    | 2026-02-06   | All L2-related tests passing             |
+## 实现计划
+**目标：**
+扩展现有向量相似度度量系统（支持内积）以支持欧几里得（L2）距离，使用平方L2距离提高效率（不计算平方根）。
 
-## Progress Log
+**步骤：**
+1. 在`math_utils.h`中实现`L2DistanceSquared`函数，计算两个向量之间的差值平方和，不计算平方根
+2. 创建或扩展空间类（如`space_l2.h`）使用`L2DistanceSquared`作为距离度量，遵循`space_ip.h`的结构
+3. 更新主搜索/检索逻辑（如`hnswalg.h`或相关类），允许通过参数或策略选择距离度量（内积或L2）
+4. 添加或更新单元测试（如`test_math_utils.cpp`、`test_space_ip.cpp`）以验证平方L2距离实现的正确性
+5. 更新文档，明确说明L2度量实现为平方欧几里得距离用于排序目的
+
+## 设计详情
+- `L2DistanceSquared`函数应接受两个浮点指针数组和维度参数，返回差值平方和
+- 新的`SpaceL2`类（或类似）应继承与`SpaceInnerProduct`相同的基类，并覆盖距离计算方法以使用`L2DistanceSquared`
+- 主算法（如HNSW）应在构造或初始化时接受参数或枚举来选择距离度量
+- 所有接口和文档应明确说明L2度量是平方版本，以避免混淆
+- 单元测试应覆盖边界情况（零向量、相同向量、负值等）并与已知正确值比较
+
+## 验证
+- 运行单元测试确保平方L2距离计算正确
+- 检查检索逻辑是否正确切换度量
+- （可选）基准测试性能以确认省略平方根带来的效率提升
+
+## 决策
+- 使用平方L2距离以提高性能，因为仅需相对排序
+- 在函数和文档中明确标明"平方"以避免混淆
+
+
+## 进度追踪
+
+**整体状态：** 已完成 - 100%
+
+### 子任务
+| ID  | 描述                                           | 状态     | 更新日期     | 备注                              |
+|-----|-----------------------------------------------|----------|-------------|-----------------------------------|
+| 1.1 | 在math_utils.h中实现L2DistanceSquared函数       | 已完成   | 2026-02-06  | 添加dist_t类型的模板              |
+| 1.2 | 创建space_l2.h及L2Space类                      | 已完成   | 2026-02-06  | 遵循space_ip.h的模式              |
+| 1.3 | 在test_math_utils.cpp中添加L2距离单元测试       | 已完成   | 2026-02-06  | 6个测试用例覆盖边界情况            |
+| 1.4 | 创建test_space_l2.cpp包含完整的L2Space测试     | 已完成   | 2026-02-06  | 9个测试用例包括数学属性验证        |
+| 1.5 | 构建并验证所有测试通过                          | 已完成   | 2026-02-06  | 所有L2相关测试通过                |
+
+## 进度日志
 ### 2026-02-06
-- Fixed compilation error by adding #include <cmath> to test_space_l2.cpp
-- Successfully built entire project with L2 distance support
-- Verified all L2 distance tests pass:
-  - test_math_utils: 6 L2 distance test cases passed
-  - test_space_l2: 9 comprehensive test cases passed
-- Implementation complete and verified
+- 通过在test_space_l2.cpp中添加#include <cmath>修复编译错误
+- 成功构建包含L2距离支持的整个项目
+- 验证所有L2距离测试通过：
+  - test_math_utils：6个L2距离测试用例通过
+  - test_space_l2：9个综合测试用例通过
+- 实现完成并验证
 
-### Implementation Summary
-**Files Created/Modified:**
-1. **include/arena-hnswlib/math_utils.h** - Added L2DistanceSquared template function
-2. **include/arena-hnswlib/space_l2.h** - Created L2Space class with L2Squared distance function
-3. **tests/unit/test_math_utils.cpp** - Added 6 unit tests for L2DistanceSquared
-4. **tests/unit/test_space_l2.cpp** - Created comprehensive test suite with 9 test cases
+### 实现总结
+**创建/修改的文件：**
+1. **include/arena-hnswlib/math_utils.h** - 添加L2DistanceSquared模板函数
+2. **include/arena-hnswlib/space_l2.h** - 创建L2Space类及L2Squared距离函数
+3. **tests/unit/test_math_utils.cpp** - 添加6个L2DistanceSquared单元测试
+4. **tests/unit/test_space_l2.cpp** - 创建包含9个测试用例的综合测试套件
 
-**Test Coverage:**
-- Basic L2 distance calculation
-- Identical vectors (distance = 0)
-- Zero vectors
-- Negative values
-- Double precision support
-- Single dimension vectors
-- Space class functionality
-- Distance function symmetry
-- Non-negativity property
-- Triangle inequality (for metric space validation)
+**测试覆盖：**
+- 基本L2距离计算
+- 相同向量（距离=0）
+- 零向量
+- 负值
+- 双精度支持
+- 单维度向量
+- 空间类功能
+- 距离函数对称性
+- 非负性属性
+- 三角不等式（度量空间验证）
 
 ### 2026-02-05
-- Initial task planning and design
+- 初始任务规划和设计
 

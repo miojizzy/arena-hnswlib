@@ -1,13 +1,13 @@
 
-## Product Background
-With the growing demand for large-scale vector search in AI, recommendation systems, and related fields, existing libraries (such as FAISS, Annoy) are powerful but often complex to integrate and lack sufficient customizability. arena-hnswlib aims to provide a lightweight, easy-to-use, and extensible C++ vector search library.
+## 产品背景
+随着AI、推荐系统及相关领域对大规模向量搜索需求的增长，现有库（如FAISS、Annoy）功能强大但往往集成复杂且缺乏足够的可定制性。arena-hnswlib旨在提供一个轻量级、易用且可扩展的C++向量搜索库。
 
-## Problems Solved
-- Efficient ANN search for high-dimensional vectors
-- Easy integration into existing C++ projects
-- Facilitates secondary development and algorithm experimentation
+## 解决的问题
+- 高维向量的高效近似最近邻（ANN）搜索
+- 便于集成到现有C++项目中
+- 便于二次开发和算法实验
 
-## User Experience Goals
-- Simple and easy-to-use API
-- Detailed documentation and examples
-- Reliable testing and performance benchmarks
+## 用户体验目标
+- 简单易用的API
+- 详细的文档和示例
+- 可靠的测试和性能基准

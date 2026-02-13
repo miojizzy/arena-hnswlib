@@ -1,43 +1,43 @@
-# Active Context
+# 活跃上下文
 
-### Current Work Focus
-- Completed comprehensive benchmark suite for BruteForce vs HNSW comparison (TASK003 - 2026-02-06)
-- All core algorithms are implemented and tested
-- Focus shifting to optimization and advanced features
+### 当前工作重点
+- 完成BruteForce与HNSW对比的综合基准测试套件（TASK003 - 2026-02-06）
+- 所有核心算法已实现并测试通过
+- 重点转向优化和高级功能
 
-### Recent Changes
-- Completed benchmark suite implementation (TASK003 - 2026-02-06)
-  - Created benchmark_index.cpp with VectorGenerator class
-  - Implemented seedable random vector generation with L2 normalization option
-  - Added benchmark fixtures for BruteForce and HNSW indexes
-  - Benchmarked build time, single query, and batch query performance
-  - Added parameterized benchmarks for varying K and data sizes
-  - Created comprehensive documentation in benchmarks/README.md
-  - Fixed compilation issues: added <stdexcept> headers, corrected pointer usage
-  - Updated CMakeLists.txt and run_benchmarks.sh script
-- Completed L2 (Euclidean) distance support (TASK002 - 2026-02-06)
-  - Implemented L2DistanceSquared function in math_utils.h
-  - Created L2Space class in space_l2.h
-  - Added comprehensive unit tests (test_math_utils.cpp and test_space_l2.cpp)
-  - All tests passing successfully
-- Added and stabilized BruteForceSearch and DataStoreAligned classes
-- Implemented InnerProductSpace and L2Space distance functions
-- HNSW (HierarchicalNSW) class: core logic implemented, including neighbor selection, level assignment, and search
-- Added comprehensive unit tests for HNSW (initialization, add/search, max elements)
+### 最近变更
+- 完成基准测试套件实现（TASK003 - 2026-02-06）
+  - 创建benchmark_index.cpp，包含VectorGenerator类
+  - 实现可设置种子随机向量生成，支持L2归一化选项
+  - 添加BruteForce和HNSW索引的基准测试固件
+  - 基准测试构建时间、单次查询和批量查询性能
+  - 添加可变K值和数据大小的参数化基准测试
+  - 在benchmarks/README.md中创建完整文档
+  - 修复编译问题：添加<stdexcept>头文件，修正指针用法
+  - 更新CMakeLists.txt和run_benchmarks.sh脚本
+- 完成L2（欧几里得）距离支持（TASK002 - 2026-02-06）
+  - 在math_utils.h中实现L2DistanceSquared函数
+  - 在space_l2.h中创建L2Space类
+  - 添加完整的单元测试（test_math_utils.cpp和test_space_l2.cpp）
+  - 所有测试通过
+- 添加并稳定BruteForceSearch和DataStoreAligned类
+- 实现InnerProductSpace和L2Space距离函数
+- HNSW（HierarchicalNSW）类：核心逻辑已实现，包括邻居选择、层级分配和搜索
+- 添加HNSW的完整单元测试（初始化、添加/搜索、最大元素数）
 
-### Next Steps
-- Analyze benchmark results to identify optimization opportunities
-- Consider implementing memory usage tracking in benchmarks
-- Further optimize HNSW neighbor update and search logic based on benchmark insights
-- Add more edge-case and stress tests for HNSW
-- Improve documentation and code comments, especially in hnswalg.h
-- Consider adding precision/recall accuracy benchmarks
+### 下一步计划
+- 分析基准测试结果以识别优化机会
+- 考虑在基准测试中实现内存使用追踪
+- 根据基准测试洞察进一步优化HNSW邻居更新和搜索逻辑
+- 为HNSW添加更多边界情况和压力测试
+- 改进文档和代码注释，特别是hnswalg.h
+- 考虑添加精确率/召回率准确性基准测试
 
-### Active Decisions and Considerations
-- Using std::unique_ptr for memory management in DataStore and HNSW (consistent with SpacePtr)
-- Using static_assert for template constraints
-- Using static linkage for distance functions
-- Unit tests are the main validation method for correctness
-- Benchmarks use fixed random seeds (42) for reproducibility
-- L2 distance only for benchmarks (as per TASK003 requirements)
-- Default benchmark parameters: DIM=128, DATA_SIZE=10000, QUERY_SIZE=100, K=10
+### 当前决策与考虑
+- 在DataStore和HNSW中使用std::unique_ptr进行内存管理（与SpacePtr一致）
+- 使用static_assert进行模板约束
+- 使用静态链接实现距离函数
+- 单元测试是正确性的主要验证方法
+- 基准测试使用固定随机种子（42）以确保可复现性
+- 基准测试仅使用L2距离（根据TASK003要求）
+- 默认基准测试参数：DIM=128, DATA_SIZE=10000, QUERY_SIZE=100, K=10

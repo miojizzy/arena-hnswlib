@@ -1,29 +1,29 @@
-# Progress
+# 进度
 
-### What Works
-- BruteForceSearch and DataStore classes are implemented and tested
-- InnerProductSpace and L2Space distance metrics are implemented and tested
-- L2 (Euclidean) distance support using squared L2 for efficiency
-- HNSW (HierarchicalNSW) class: core structure and most methods implemented
-- Unit tests for all core components (BruteForceSearch, DataStore, HierarchicalNSW, distance metrics)
-- Comprehensive benchmarks for BruteForce and HNSW indexes (build time, query time, scalability)
-- Random vector generation with seedable RNG and optional L2 normalization
+### 已完成功能
+- BruteForceSearch和DataStore类已实现并测试
+- InnerProductSpace和L2Space距离度量已实现并测试
+- L2（欧几里得）距离支持，使用平方L2以提高效率
+- HNSW（HierarchicalNSW）类：核心结构和大部分方法已实现
+- 所有核心组件的单元测试（BruteForceSearch、DataStore、HierarchicalNSW、距离度量）
+- BruteForce和HNSW索引的综合基准测试（构建时间、查询时间、可扩展性）
+- 随机向量生成，支持可设置种子的RNG和可选L2归一化
 
-### What Remains
-- Further optimize and test HNSW index logic (neighbor selection, level assignment, search)
-- Add more comprehensive and edge-case unit tests for HNSW
-- Document all public APIs and clarify usage patterns
-- Consider adding memory usage benchmarks
-- Evaluate performance optimizations based on benchmark results
+### 待完成功能
+- 进一步优化和测试HNSW索引逻辑（邻居选择、层级分配、搜索）
+- 为HNSW添加更全面和边界情况的单元测试
+- 文档化所有公共API并阐明使用模式
+- 考虑添加内存使用基准测试
+- 根据基准测试结果评估性能优化
 
-### Current Status
-- BruteForceSearch and DataStore: stable
-- InnerProductSpace and L2Space: stable
-- HNSW: core logic implemented, basic and edge-case tests present, some advanced features may be incomplete
-- Benchmarking: comprehensive benchmark suite implemented and working
+### 当前状态
+- BruteForceSearch和DataStore：稳定
+- InnerProductSpace和L2Space：稳定
+- HNSW：核心逻辑已实现，基础和边界情况测试已存在，部分高级功能可能不完整
+- 基准测试：综合基准测试套件已实现并正常工作
 
-### Known Issues
-- HNSW: neighbor update logic and search heuristics may need further validation
-- Some methods in HNSW are complex and could use more comments
-- HNSW build time is significant for large datasets (expected behavior)
-- Benchmarks built in DEBUG mode show performance warnings
+### 已知问题
+- HNSW：邻居更新逻辑和搜索启发式可能需要进一步验证
+- HNSW中部分方法较复杂，可增加更多注释
+- HNSW构建时间对于大数据集较长（预期行为）
+- DEBUG模式构建的基准测试显示性能警告

@@ -1,84 +1,84 @@
-# TASK003 - Benchmark Bruteforce vs HNSWalg
+# TASK003 - Bruteforce与HNSW算法基准测试
 
-**Status:** Completed  
-**Added:** 2026-02-06  
-**Updated:** 2026-02-06  
-**Completed:** 2026-02-06
+**状态：** 已完成
+**添加日期：** 2026-02-06
+**更新日期：** 2026-02-06
+**完成日期：** 2026-02-06
 
-## Original Request
-Design and implement a comprehensive benchmark to compare bruteforce and hnswalg index performance. Restrict distance calculation to L2 only, with a stub for inner product. Vector data should be generated randomly with a controllable seed, and normalization (L2 norm) should be switchable.
+## 原始需求
+设计并实现综合基准测试以比较暴力搜索和HNSW算法索引性能。距离计算仅限L2，为内积预留接口。向量数据应随机生成，种子可控，归一化（L2范数）可切换。
 
-## Thought Process
-- Need reproducible, parameterized benchmarks for both index types.
-- L2 distance is the only metric for now; inner product interface should be reserved for future.
-- Random vector generation must be seedable for consistency.
-- Normalization switch allows testing both raw and normalized vectors.
-- Google Benchmark framework is already integrated.
+## 思考过程
+- 需要可复现、参数化的两种索引类型基准测试
+- 目前仅使用L2距离度量；内积接口应保留供将来使用
+- 随机向量生成必须可设置种子以确保一致性
+- 归一化开关允许测试原始向量和归一化向量
+- Google Benchmark框架已集成
 
-## Implementation Plan
-- [ ] Create benchmark_index.cpp in benchmarks/ for index comparison.
-- [ ] Implement random vector generator with seed parameter.
-- [ ] Add normalization (L2 norm) switch to vector generator.
-- [ ] Parameterize benchmarks for data size, dimension, seed, normalization.
-- [ ] Restrict all index/query operations to L2 distance; add stub for inner product.
-- [ ] Benchmark index build time, single/batch query time, memory usage.
-- [ ] Output results via Google Benchmark; consider CSV/JSON export.
-- [ ] Document all parameters and usage.
+## 实现计划
+- [ ] 在benchmarks/创建benchmark_index.cpp用于索引比较
+- [ ] 实现带种子参数的随机向量生成器
+- [ ] 向向量生成器添加归一化（L2范数）开关
+- [ ] 参数化基准测试（数据大小、维度、种子、归一化）
+- [ ] 限制所有索引/查询操作使用L2距离；为内积预留接口
+- [ ] 基准测试索引构建时间、单次/批量查询时间、内存使用
+- [ ] 通过Google Benchmark输出结果；考虑CSV/JSON导出
+- [ ] 文档化所有参数和用法
 
-## Progress Tracking
+## 进度追踪
 
-**Overall Status:** Completed - 100%
+**整体状态：** 已完成 - 100%
 
-### Subtasks
-| ID   | Description                                         | Status      | Updated    | Notes                  |
-|------|-----------------------------------------------------|-------------|------------|------------------------|
-| 3.1  | Create benchmark_index.cpp skeleton                 | Complete    | 2026-02-06 | Implemented with fixtures |
-| 3.2  | Implement seedable random vector generator          | Complete    | 2026-02-06 | VectorGenerator class |
-| 3.3  | Add normalization switch to generator               | Complete    | 2026-02-06 | L2 normalization support |
-| 3.4  | Parameterize benchmarks (size, dim, seed, norm)     | Complete    | 2026-02-06 | Multiple parameterized tests |
-| 3.5  | Restrict distance to L2, stub inner product         | Complete    | 2026-02-06 | L2Space only used |
-| 3.6  | Benchmark build/query/memory                        | Complete    | 2026-02-06 | Build & query benchmarks |
-| 3.7  | Output results, document usage                      | Complete    | 2026-02-06 | README.md created |
+### 子任务
+| ID   | 描述                                       | 状态     | 更新日期   | 备注                   |
+|------|-------------------------------------------|----------|------------|------------------------|
+| 3.1  | 创建benchmark_index.cpp骨架                | 已完成   | 2026-02-06 | 已实现测试固件          |
+| 3.2  | 实现可设置种子的随机向量生成器              | 已完成   | 2026-02-06 | VectorGenerator类      |
+| 3.3  | 向生成器添加归一化开关                      | 已完成   | 2026-02-06 | 支持L2归一化           |
+| 3.4  | 参数化基准测试（大小、维度、种子、归一化）   | 已完成   | 2026-02-06 | 多个参数化测试         |
+| 3.5  | 限制距离为L2，预留内积接口                   | 已完成   | 2026-02-06 | 仅使用L2Space          |
+| 3.6  | 基准测试构建/查询/内存                      | 已完成   | 2026-02-06 | 构建和查询基准测试      |
+| 3.7  | 输出结果，文档化用法                        | 已完成   | 2026-02-06 | README.md已创建        |
 
-## Progress Log
-### 2026-02-06 - Task Completed
-- Created comprehensive benchmark_index.cpp with all required features
-- Implemented VectorGenerator class with:
-  - Seedable random number generation (std::mt19937)
-  - Configurable L2 normalization
-  - Batch vector generation support
-- Created benchmark fixtures for both BruteForce and HNSW indexes
-  - Separate SetUp/TearDown for clean benchmarking
-  - Default parameters: DIM=128, DATA_SIZE=10000, QUERY_SIZE=100, K=10
-- Implemented core benchmarks:
-  - BuildIndex: Measures index construction time
-  - QuerySingle: Single query performance
-  - QueryBatch: Batch query performance (100 queries)
-- Added parameterized benchmarks:
-  - BM_BruteForce_QueryVaryingK & BM_HNSW_QueryVaryingK (k=1,5,10,50,100)
-  - BM_BruteForce_VaryingDataSize & BM_HNSW_VaryingDataSize (100,500,1000,5000,10000)
-  - BM_Normalized_vs_Raw: Compare normalized vs raw vector performance
-- Fixed compilation issues:
-  - Added #include <stdexcept> to bruteforce.h and hnswalg.h
-  - Corrected all pointer usage from std::shared_ptr to std::unique_ptr with std::move
-- Updated CMakeLists.txt to build benchmark_index executable
-- Updated scripts/run_benchmarks.sh to run both benchmarks
-- Created comprehensive benchmarks/README.md with:
-  - Usage instructions
-  - Configuration details
-  - Performance interpretation guidance
-  - Reproducibility notes
-- Successfully built and tested benchmarks
-  - All benchmarks compile and run correctly
-  - Results show expected performance characteristics
-- All requirements from TASK003 fulfilled:
-  ✓ L2 distance only (inner product available but not used)
-  ✓ Random vector generation with controllable seed
-  ✓ Switchable normalization
-  ✓ Comprehensive performance metrics
-  ✓ Google Benchmark integration
-  ✓ Documentation complete
+## 进度日志
+### 2026-02-06 - 任务完成
+- 创建了包含所有必需功能的综合benchmark_index.cpp
+- 实现VectorGenerator类：
+  - 可设置种子的随机数生成（std::mt19937）
+  - 可配置的L2归一化
+  - 批量向量生成支持
+- 为BruteForce和HNSW索引创建基准测试固件
+  - 分离的SetUp/TearDown用于干净的基准测试
+  - 默认参数：DIM=128, DATA_SIZE=10000, QUERY_SIZE=100, K=10
+- 实现核心基准测试：
+  - BuildIndex：测量索引构建时间
+  - QuerySingle：单次查询性能
+  - QueryBatch：批量查询性能（100次查询）
+- 添加参数化基准测试：
+  - BM_BruteForce_QueryVaryingK & BM_HNSW_QueryVaryingK（k=1,5,10,50,100）
+  - BM_BruteForce_VaryingDataSize & BM_HNSW_VaryingDataSize（100,500,1000,5000,10000）
+  - BM_Normalized_vs_Raw：比较归一化与原始向量性能
+- 修复编译问题：
+  - 在bruteforce.h和hnswalg.h中添加#include <stdexcept>
+  - 修正所有指针用法，从std::shared_ptr改为std::unique_ptr配合std::move
+- 更新CMakeLists.txt以构建benchmark_index可执行文件
+- 更新scripts/run_benchmarks.sh以运行两个基准测试
+- 创建综合benchmarks/README.md，包含：
+  - 使用说明
+  - 配置详情
+  - 性能解读指南
+  - 可复现性说明
+- 成功构建并测试基准测试
+  - 所有基准测试编译并正确运行
+  - 结果显示预期的性能特征
+- TASK003所有需求已满足：
+  ✓ 仅L2距离（内积可用但未使用）
+  ✓ 可控种子的随机向量生成
+  ✓ 可切换的归一化
+  ✓ 综合性能指标
+  ✓ Google Benchmark集成
+  ✓ 文档完成
 
-### 2026-02-06 - Task Created
-- Task created and structured per memory-bank requirements.
-- Implementation plan and subtasks defined for reproducibility and extensibility.
+### 2026-02-06 - 任务创建
+- 根据memory-bank要求创建并组织任务
+- 为可复现性和可扩展性定义实现计划和子任务

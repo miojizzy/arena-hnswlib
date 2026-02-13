@@ -1,16 +1,16 @@
-## Main Technology Stack
+## 主要技术栈
 - C++17
 - CMake 3.15+
-- GoogleTest (unit testing)
-- Google Benchmark (performance benchmarking)
+- GoogleTest（单元测试）
+- Google Benchmark（性能基准测试）
 
-## Development Environment
+## 开发环境
 - Ubuntu 24.04.3 LTS
-- Recommended: VSCode + Dev Container
+- 推荐：VSCode + Dev Container
 
-## Technical Constraints
-- Only depends on the standard library and GoogleTest/Benchmark
-- Must support mainstream Linux platforms
+## 技术约束
+- 仅依赖标准库和GoogleTest/Benchmark
+- 必须支持主流Linux平台
 
-## Dependency Management
-- Uses CMake FetchContent to fetch GoogleTest/Benchmark
+## 依赖管理
+- 使用CMake FetchContent获取GoogleTest/Benchmark
