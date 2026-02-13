@@ -23,15 +23,15 @@
 扩展现有向量相似度度量系统（支持内积）以支持欧几里得（L2）距离，使用平方L2距离提高效率（不计算平方根）。
 
 **步骤：**
-1. 在`math_utils.h`中实现`L2DistanceSquared`函数，计算两个向量之间的差值平方和，不计算平方根
-2. 创建或扩展空间类（如`space_l2.h`）使用`L2DistanceSquared`作为距离度量，遵循`space_ip.h`的结构
+1. 在`space_l2.h`中实现`L2Squared`和`L2SquaredDistance`函数，计算两个向量之间的差值平方和，不计算平方根
+2. 创建`L2Space`类使用`L2SquaredDistance`作为距离度量，遵循`InnerProductSpace`的结构
 3. 更新主搜索/检索逻辑（如`hnswalg.h`或相关类），允许通过参数或策略选择距离度量（内积或L2）
-4. 添加或更新单元测试（如`test_math_utils.cpp`、`test_space_ip.cpp`）以验证平方L2距离实现的正确性
+4. 创建`test_space_l2.cpp`单元测试文件，验证平方L2距离实现的正确性
 5. 更新文档，明确说明L2度量实现为平方欧几里得距离用于排序目的
 
 ## 设计详情
-- `L2DistanceSquared`函数应接受两个浮点指针数组和维度参数，返回差值平方和
-- 新的`SpaceL2`类（或类似）应继承与`SpaceInnerProduct`相同的基类，并覆盖距离计算方法以使用`L2DistanceSquared`
+- `L2Squared`函数应接受两个浮点指针数组和维度参数，返回差值平方和
+- 新的`L2Space`类应继承`SpaceInterface`基类，使用`L2SquaredDistance`作为距离计算方法
 - 主算法（如HNSW）应在构造或初始化时接受参数或枚举来选择距离度量
 - 所有接口和文档应明确说明L2度量是平方版本，以避免混淆
 - 单元测试应覆盖边界情况（零向量、相同向量、负值等）并与已知正确值比较
@@ -53,27 +53,22 @@
 ### 子任务
 | ID  | 描述                                           | 状态     | 更新日期     | 备注                              |
 |-----|-----------------------------------------------|----------|-------------|-----------------------------------|
-| 1.1 | 在math_utils.h中实现L2DistanceSquared函数       | 已完成   | 2026-02-06  | 添加dist_t类型的模板              |
-| 1.2 | 创建space_l2.h及L2Space类                      | 已完成   | 2026-02-06  | 遵循space_ip.h的模式              |
-| 1.3 | 在test_math_utils.cpp中添加L2距离单元测试       | 已完成   | 2026-02-06  | 6个测试用例覆盖边界情况            |
-| 1.4 | 创建test_space_l2.cpp包含完整的L2Space测试     | 已完成   | 2026-02-06  | 9个测试用例包括数学属性验证        |
-| 1.5 | 构建并验证所有测试通过                          | 已完成   | 2026-02-06  | 所有L2相关测试通过                |
+| 1.1 | 在space_l2.h中实现L2Squared和L2SquaredDistance函数 | 已完成   | 2026-02-06  | 添加dist_t类型的模板，支持AVX SIMD优化 |
+| 1.2 | 创建L2Space类继承SpaceInterface                | 已完成   | 2026-02-06  | 遵循InnerProductSpace的模式       |
+| 1.3 | 创建test_space_l2.cpp包含完整的L2Space测试     | 已完成   | 2026-02-06  | 9个测试用例包括数学属性验证        |
+| 1.4 | 构建并验证所有测试通过                          | 已完成   | 2026-02-06  | 所有L2相关测试通过                |
 
 ## 进度日志
 ### 2026-02-06
 - 通过在test_space_l2.cpp中添加#include <cmath>修复编译错误
 - 成功构建包含L2距离支持的整个项目
-- 验证所有L2距离测试通过：
-  - test_math_utils：6个L2距离测试用例通过
-  - test_space_l2：9个综合测试用例通过
+- 验证所有L2距离测试通过：test_space_l2共9个测试用例
 - 实现完成并验证
 
 ### 实现总结
 **创建/修改的文件：**
-1. **include/arena-hnswlib/math_utils.h** - 添加L2DistanceSquared模板函数
-2. **include/arena-hnswlib/space_l2.h** - 创建L2Space类及L2Squared距离函数
-3. **tests/unit/test_math_utils.cpp** - 添加6个L2DistanceSquared单元测试
-4. **tests/unit/test_space_l2.cpp** - 创建包含9个测试用例的综合测试套件
+1. **include/arena-hnswlib/space_l2.h** - 创建L2Space类及L2Squared/L2SquaredDistance距离函数，支持AVX SIMD优化
+2. **tests/unit/test_space_l2.cpp** - 创建包含9个测试用例的综合测试套件
 
 **测试覆盖：**
 - 基本L2距离计算
