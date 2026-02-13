@@ -17,7 +17,7 @@
 │   ├── agents -> ../github/agents
 │   ├── instructions -> ../github/instructions
 │   └── skills -> ../github/skills
-├── cnb.yml                # CNB 平台配置（事件触发 + 双向同步）
+├── cnb.yml                # CNB 平台配置（事件触发 + 双向同步）(已转移到根目录)
 └── CNB_DOCKER_README.md   # CNB Docker 环境详细说明
 ```
 
@@ -32,9 +32,9 @@
 
 ### CNB Workspace
 
-使用 `cnb.yml` 和 `.ide/Dockerfile` 构建开发环境：
+使用 `.cnb.yml` 和 `.ide/Dockerfile` 构建开发环境：
 
-- **配置文件**: [cnb.yml](./cnb.yml) 定义开发环境构建和服务配置
+- **配置文件**: [.cnb.yml](已直接放置在根目录) 定义开发环境构建和服务配置（CNB 平台不支持软链接配置文件）
 - **Docker 镜像**: [ide/Dockerfile](./ide/Dockerfile) 基于 Ubuntu 24.04
 - **详细说明**: 参见 [CNB_DOCKER_README.md](./CNB_DOCKER_README.md)
 
