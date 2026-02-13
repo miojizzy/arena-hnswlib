@@ -1,10 +1,10 @@
 $:
   vscode:
     - docker:
-        # build: .devcontainer/Dockerfile.cnb
+        build: .devcontainer/Dockerfile.cnb
         # build: .ide/Dockerfile
         # 使用github的官方通用镜像
-        image: mcr.microsoft.com/devcontainers/universal:linux
+        #image: mcr.microsoft.com/devcontainers/universal:linux
       services:
         - vscode
         - docker
