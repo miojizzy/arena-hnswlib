@@ -28,19 +28,21 @@ template<>
 float L2SqrSIMDAVX<float>(const float *pVect1, const float *pVect2, const size_t dim) {
     float PORTABLE_ALIGN64 TmpRes[8];
     const float *pEnd1 = pVect1 + (dim >> 4 << 4);
-    __m256 diff, v1, v2;    
+    __m256 diff, v1, v2;
     __m256 sum = _mm256_set1_ps(0);
     while (pVect1 < pEnd1) {
-        v1 = _mm256_load_ps(pVect1);
+        // Use unaligned load (loadu) to handle data that may not be 32-byte aligned
+        // std::vector and other containers don't guarantee AVX alignment
+        v1 = _mm256_loadu_ps(pVect1);
         pVect1 += 8;
-        v2 = _mm256_load_ps(pVect2);
+        v2 = _mm256_loadu_ps(pVect2);
         pVect2 += 8;
         diff = _mm256_sub_ps(v1, v2);
         sum = _mm256_add_ps(sum, _mm256_mul_ps(diff, diff));
 
-        v1 = _mm256_load_ps(pVect1);
+        v1 = _mm256_loadu_ps(pVect1);
         pVect1 += 8;
-        v2 = _mm256_load_ps(pVect2);
+        v2 = _mm256_loadu_ps(pVect2);
         pVect2 += 8;
         diff = _mm256_sub_ps(v1, v2);
         sum = _mm256_add_ps(sum, _mm256_mul_ps(diff, diff));
@@ -56,16 +58,17 @@ double L2SqrSIMDAVX<double>(const double *pVect1, const double *pVect2, const si
     __m256d diff, v1, v2;
     __m256d sum = _mm256_set1_pd(0);
     while (pVect1 < pEnd1) {
-        v1 = _mm256_load_pd(pVect1);
+        // Use unaligned load (loadu) to handle data that may not be 32-byte aligned
+        v1 = _mm256_loadu_pd(pVect1);
         pVect1 += 4;
-        v2 = _mm256_load_pd(pVect2);
+        v2 = _mm256_loadu_pd(pVect2);
         pVect2 += 4;
         diff = _mm256_sub_pd(v1, v2);
         sum = _mm256_add_pd(sum, _mm256_mul_pd(diff, diff));
 
-        v1 = _mm256_load_pd(pVect1);
+        v1 = _mm256_loadu_pd(pVect1);
         pVect1 += 4;
-        v2 = _mm256_load_pd(pVect2);
+        v2 = _mm256_loadu_pd(pVect2);
         pVect2 += 4;
         diff = _mm256_sub_pd(v1, v2);
         sum = _mm256_add_pd(sum, _mm256_mul_pd(diff, diff));

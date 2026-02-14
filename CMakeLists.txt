@@ -19,7 +19,7 @@ target_include_directories(arena-hnswlib INTERFACE include)
 
 # Enable SSE2, AVX, and force SSE math for all targets (fixes __m128i/__m128d errors)
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-msse2 -mavx -O3)
+    add_compile_options(-msse2 -mavx -O3 -g)
 endif()
 
 # Add tests
