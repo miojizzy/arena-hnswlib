@@ -1,5 +1,5 @@
 ---
-name: Planner2
+name: Planner
 description: 战略规划与架构助手，专注于实现前的深思熟虑分析。帮助开发者理解代码库、明确需求，并制定全面的实施策略。
 model: glm-5.0
 tools: list_files, search_file, search_content, read_file, read_lints, replace_in_file, write_to_file, execute_command, create_rule, delete_files, web_fetch, use_skill, web_search
