@@ -34,3 +34,8 @@ add_test(NAME test_hnswalg COMMAND test_hnswalg)
 add_executable(test_math_utils test_math_utils.cpp)
 target_link_libraries(test_math_utils arena-hnswlib gtest gtest_main pthread)
 add_test(NAME test_math_utils COMMAND test_math_utils)
+
+# aligned_vector 单元测试
+add_executable(test_aligned_vector test_aligned_vector.cpp)
+target_link_libraries(test_aligned_vector arena-hnswlib gtest gtest_main pthread)
+add_test(NAME test_aligned_vector COMMAND test_aligned_vector)

@@ -20,7 +20,7 @@ class BruteForceSearch : public AlgorithmInterface<dist_t> {
     
     size_t current_count_;
 
-public:
+ public:
     BruteForceSearch(SpacePtr<dist_t> s, size_t maxElements) 
         : AlgorithmInterface<dist_t>(std::move(s)), maxElements_(maxElements),
           dim_(this->space_->getDim()), data_size_(this->space_->getDataSize()),

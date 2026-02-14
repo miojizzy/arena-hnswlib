@@ -61,7 +61,7 @@ class LinkLists {
         }
     }
 
-public:
+ public:
     inline const size_t& getM(size_t level) const {
         return level == 0 ? M0_ : M_;
     }
@@ -70,7 +70,7 @@ public:
         return getM(level) + 1;
     }
 
-public:
+ public:
     LinkLists(size_t M, size_t elementSize) 
         : M_(M), M0_(2*M), elementSize_(elementSize){
         init();
@@ -120,7 +120,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     std::vector<size_t> point_order_;
     size_t cur_element_count_;
 
-public:
+ public:
     HierarchicalNSW(SpacePtr<dist_t> s, size_t elementSize, 
         size_t M, size_t efConstruction, size_t random_seed=42) 
         : AlgorithmInterface<dist_t>(std::move(s)), elementSize_(elementSize),

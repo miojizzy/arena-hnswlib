@@ -1,6 +1,6 @@
 # TASK004 - 实现对齐向量容器 AlignedVector
 
-**状态：** 待处理
+**状态：** 已完成
 **添加日期：** 2026-02-14
 **更新日期：** 2026-02-14
 
@@ -18,29 +18,36 @@
 ### 问题背景
 在修复 `_mm256_load_ps` 导致的段错误时，发现 `std::vector<float>` 不保证 32 字节对齐。需要实现对齐容器来避免此类问题。
 
-### 设计决策
+### 最终设计决策
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
-| 拷贝构造 | 禁用 | 避免意外深拷贝和 double-free |
-| 深拷贝 | `clone()` 方法 | 显式表达意图 |
+| 类设计 | 两个独立类 | `AlignedVector`（拥有）和 `AlignedVectorView`（非拥有）分离，职责清晰 |
+| 拷贝构造 | AlignedVector禁用，View允许 | Owner 避免意外深拷贝和 double-free；View 是引用语义，允许拷贝 |
+| 深拷贝 | 不提供 | 简化设计，如需要可手动 memcpy |
 | 动态扩容 | 不支持 | 简化设计，符合 SIMD 场景（固定维度） |
-| View 修改 | 允许改值，不可扩容 | 满足数据修改需求 |
-| 只读视图 | 增加 `AlignedVectorConstView` | 支持只读场景 |
-| 对齐值 | 模板参数，编译期固定 | 参考项目现有 `PORTABLE_ALIGN32/64` |
-| 对齐检查 | 运行时断言 | 调试模式下验证外部内存对齐 |
+| 迭代器 | 不支持 | 只提供 `[]` 随机访问，简化接口 |
+| 对齐值 | 模板参数，编译期固定 | 默认32字节，支持32/64字节对齐 |
 
 ### 内存模式
 
-| 模式 | owns_memory_ | 析构行为 | 可修改数据 | 可扩容 |
-|------|-------------|----------|-----------|--------|
-| Owner | true | 释放内存 | ✓ | ✗ |
-| View | false | 不释放 | ✓ | ✗ |
-| ConstView | false | 不释放 | ✗ | ✗ |
+| 类 | owns_memory | 析构行为 | 可修改数据 | 可拷贝 |
+|----|-------------|----------|-----------|--------|
+| AlignedVector | ✓ | 释放内存 | ✓ | ✗ (仅移动) |
+| AlignedVectorView | ✗ | 不释放 | ✓ | ✓ |
 
-### 对齐偏移问题
+### 对齐容量计算
 
-当在一个大块对齐内存中存储多个向量时，只有第一个向量地址对齐。需要 padding 保证每个向量起始地址都对齐。
+当需要在一个大块对齐内存中存储多个向量时，每个向量的容量按对齐边界向上取整：
+
+```cpp
+// 计算 count 个元素需要的对齐容量
+size_type calc_aligned_capacity(size_type count) {
+    const size_type bytes = count * sizeof(T);
+    const size_type aligned_bytes = ((bytes + Alignment - 1) / Alignment) * Alignment;
+    return aligned_bytes / sizeof(T);
+}
+```
 
 示例：64 字节对齐，2 维 float 向量（8 字节）
 ```
@@ -48,33 +55,50 @@
 有 padding：  vec0@0x00 ✓  vec1@0x40 ✓  vec2@0x80 ✓
 ```
 
-## 实现计划
-- 创建 `include/arena-hnswlib/aligned_vector.h` 文件
-- 实现 `AlignedVector<T, Alignment>` 类
-  - 构造函数：默认、指定大小、大小+填充值
-  - 工厂方法：`view()`, `take()`
-  - 移动语义，禁用拷贝，提供 `clone()`
-  - 访问器：`data()`, `size()`, `capacity()`, `operator[]`, `at()`, `front()`, `back()`
-  - 迭代器：`begin()`, `end()`, `cbegin()`, `cend()`
-  - 修改器：`resize()`, `clear()`（仅 Owner 模式）
-  - 静态工具：`aligned_stride()`, `offset_at()`, `total_capacity()`, `pointer_at()`
-- 实现 `AlignedVectorConstView<T, Alignment>` 类
-  - 只读视图，不允许修改数据
-- 添加单元测试
+## 实现内容
+
+### 文件
+- `include/arena-hnswlib/aligned_vector.h` - 主要实现
+
+### AlignedVector 类
+- **构造函数**：`explicit AlignedVector(size_type count)`
+- **移动语义**：移动构造/赋值，禁用拷贝
+- **访问器**：`data()`, `size()`, `capacity()`, `alignment()`
+- **限制**：只支持 trivially copyable 类型
+
+### AlignedVectorView 类
+- **构造函数**：`AlignedVectorView(pointer ptr, size_type count)`
+- **拷贝语义**：默认拷贝构造/赋值（引用语义）
+- **访问器**：`data()`, `size()`, `capacity()`, `alignment()`
+- **限制**：只支持 trivially copyable 类型
+
+### 集成到 DataStoreAligned
+`DataStoreAligned` 已更新为使用 `AlignedVector` 作为底层存储：
+- 内部使用 `AlignedVector<T, Alignment>` 管理整个对齐内存
+- 新增 `getView(id)` 方法返回 `AlignedVectorView`
+- 新增 `getVector()` 方法访问底层 `AlignedVector`
 
 ## 进度追踪
 
-**整体状态：** 未开始 - 0%
+**整体状态：** 已完成 - 100%
 
 ### 子任务
 | ID | 描述 | 状态 | 更新日期 | 备注 |
 |----|------|------|----------|------|
-| 1.1 | 实现 AlignedVector 核心类 | 未开始 | - | - |
-| 1.2 | 实现 AlignedVectorConstView 类 | 未开始 | - | - |
-| 1.3 | 添加静态对齐工具方法 | 未开始 | - | - |
-| 1.4 | 编写单元测试 | 未开始 | - | - |
+| 1.1 | 实现 AlignedVector 类 | 已完成 | 2026-02-14 | 拥有内存，move-only |
+| 1.2 | 实现 AlignedVectorView 类 | 已完成 | 2026-02-14 | 非拥有视图，可拷贝 |
+| 1.3 | 集成到 DataStoreAligned | 已完成 | 2026-02-14 | 使用 AlignedVector 作为底层存储 |
+| 1.4 | 编写单元测试 | 已完成 | 2026-02-14 | 15个测试用例全部通过 |
 
 ## 进度日志
 ### 2026-02-14
 - 完成 AlignedVector 设计讨论
-- 确定实现方案和接口设计
+- 初始实现包含完整 STL 风格接口（迭代器等）
+- 根据用户反馈简化设计：
+  - 移除迭代器支持，只保留 `[]` 随机访问
+  - 固定大小，不支持动态扩容
+  - 拆分为 AlignedVector 和 AlignedVectorView 两个类
+- 修复用户代码中的 bug（成员初始化顺序、const 修饰符等）
+- 更新测试用例匹配最终接口
+- 将 DataStoreAligned 改为使用 AlignedVector 作为底层存储
+- 所有 84 个测试通过

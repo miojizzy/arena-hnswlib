@@ -1,6 +1,7 @@
 
 #pragma once 
 #include "arena_hnswlib.h"
+#include "aligned_vector.h"
 #include <cstddef>
 #include <memory>
 #include <cstring>
@@ -10,7 +11,7 @@ namespace arena_hnswlib {
 
 template<typename T>
 class DataStoreInterface {
-public:
+ public:
     virtual ~DataStoreInterface() {};
 
     virtual bool setData(InternalId id, const T *data) = 0;
@@ -25,7 +26,7 @@ class DataStore : public DataStoreInterface<T> {
     const size_t maxElements_;
     std::unique_ptr<T[]> data_; // Use smart pointer for automatic memory management
 
-public:
+ public:
     DataStore(size_t dataLen, size_t maxElements) 
         : dataLen_(dataLen), maxElements_(maxElements), 
         data_(std::make_unique<T[]>(dataLen_ * maxElements_)) {
@@ -61,49 +62,63 @@ public:
 
 
 
-template<typename T, size_t N>
+template<typename T, size_t Alignment = 64>
 class DataStoreAligned : public DataStoreInterface<T> {
-    static_assert(N > 0 && (N & (N - 1)) == 0, 
-        "Alignment N must be a power of two and greater than zero");
-    static_assert(N == 32 || N == 64, 
-        "Alignment N must be either 32 or 64");
+    static_assert(Alignment > 0 && (Alignment & (Alignment - 1)) == 0, 
+        "Alignment must be a power of two and greater than zero");
+    static_assert(Alignment == 32 || Alignment == 64, 
+        "Alignment must be either 32 or 64");
 
+    AlignedVector<T, Alignment> data_;
     const size_t dataLen_;
     const size_t maxElements_;
-    std::unique_ptr<T, decltype(&std::free)> data_; // Aligned memory managed by unique_ptr
 
-public:
+ public:
     DataStoreAligned(size_t dataLen, size_t maxElements)
-        : dataLen_(dataLen), maxElements_(maxElements),
-          data_(static_cast<T*>(std::aligned_alloc(N, dataLen_ * maxElements_ * sizeof(T))), &std::free) {
-        if (!data_) {
-            throw std::bad_alloc(); // Throw exception if memory allocation fails
-        }
-    }
+        : data_(dataLen * maxElements), dataLen_(dataLen), maxElements_(maxElements) {}
 
-    ~DataStoreAligned() = default; // unique_ptr handles memory cleanup
+    ~DataStoreAligned() = default;
 
     bool setData(InternalId id, const T* data) override {
         if (!data || id >= maxElements_) {
-            return false; // Check for null pointer and valid ID
+            return false;
         }
-        std::memcpy(&data_.get()[id * dataLen_], data, dataLen_ * sizeof(T));
+        std::memcpy(data_.data() + id * dataLen_, data, dataLen_ * sizeof(T));
         return true;
     }
 
     T* getData(InternalId id) override {
         if (id >= maxElements_) {
-            return nullptr; // Return nullptr for invalid ID
+            return nullptr;
         }
-        return &data_.get()[id * dataLen_];
+        return data_.data() + id * dataLen_;
     }
 
     const T* getData(InternalId id) const {
         if (id >= maxElements_) {
-            return nullptr; // Return nullptr for invalid ID
+            return nullptr;
         }
-        return &data_.get()[id * dataLen_];
+        return data_.data() + id * dataLen_;
     }
+
+    // Get a view of the element at the given id
+    AlignedVectorView<T, Alignment> getView(InternalId id) {
+        if (id >= maxElements_) {
+            return AlignedVectorView<T, Alignment>(nullptr, 0);
+        }
+        return AlignedVectorView<T, Alignment>(data_.data() + id * dataLen_, dataLen_);
+    }
+
+    const AlignedVectorView<T, Alignment> getView(InternalId id) const {
+        if (id >= maxElements_) {
+            return AlignedVectorView<T, Alignment>(nullptr, 0);
+        }
+        return AlignedVectorView<T, Alignment>(data_.data() + id * dataLen_, dataLen_);
+    }
+
+    // Access to underlying aligned vector
+    AlignedVector<T, Alignment>& getVector() { return data_; }
+    const AlignedVector<T, Alignment>& getVector() const { return data_; }
 };
 
 } // namespace arena_hnswlib
