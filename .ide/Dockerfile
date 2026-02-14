@@ -6,7 +6,7 @@ FROM ubuntu:24.04
 # 避免交互式提示
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 安装 GCC 13、CMake 3.22+、Make、Python 3.12、Go 1.23
+# 安装 GCC 13、CMake 3.22+、Make、Python 3.12、Go 1.23、GDB
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     curl \
@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     gcc-13 \
     make \
     cmake \
+    gdb \
     python3.12 \
     python3.12-dev \
     python3-pip \
