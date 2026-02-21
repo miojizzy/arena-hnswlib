@@ -108,6 +108,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     // hnsw specific parameters
     size_t M_;
     size_t efConstruction_;
+    size_t efSearch_;
     size_t random_seed_;
 
     // data stores
@@ -126,7 +127,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         : AlgorithmInterface<dist_t>(std::move(s)), elementSize_(elementSize),
           dim_(this->space_->getDim()), data_size_(this->space_->getDataSize()),
           dist_func_(this->space_->getDistFunc()),
-          M_(M), efConstruction_(efConstruction), random_seed_(random_seed),
+          M_(M), efConstruction_(efConstruction), efSearch_(efConstruction), random_seed_(random_seed),
           point_store_(dim_, elementSize_), label_store_(1, elementSize_),
           link_lists_(M, elementSize_), point_order_(elementSize_), cur_element_count_(0) {
         
@@ -136,6 +137,8 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         std::shuffle(point_order_.begin()+1, point_order_.end(), rng);
     }
 
+    size_t getEfSearch() const { return efSearch_; }
+    void setEfSearch(size_t ef) { efSearch_ = ef; }
 
     void addPoint(const void *data_point, LabelType label_type) override {
         if (cur_element_count_ >= elementSize_) {
@@ -179,17 +182,43 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     }
 
     void updateNewPointAtLevel(InternalId internal_id, InternalId enterpoint_id, size_t level) {
-        // printf("Updating new point %u at level %zu with entry point %u\n", internal_id, level, enterpoint_id);
-        auto all_neighbors = getTwoHopNeighborsOnLevel(enterpoint_id, level);
-        all_neighbors.emplace_back(enterpoint_id);
+        // Use beam search (ef = efConstruction_) to find construction candidates,
+        // mirroring the standard HNSW SEARCH-LAYER algorithm.
+        dist_t ep_dist = dist_func_(point_store_.getData(internal_id),
+                                    point_store_.getData(enterpoint_id), dim_);
 
-        auto candidates = std::priority_queue<std::pair<dist_t, InternalId>>();
-        for(auto cand: all_neighbors) {
-            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), dim_);
-            candidates.push({dist, cand});
-        }
-        while (candidates.size() > efConstruction_) {
-            candidates.pop();
+        SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
+        BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
+        std::set<InternalId> visited;
+
+        searchCandidates.emplace(ep_dist, enterpoint_id);
+        candidates.emplace(ep_dist, enterpoint_id);
+        visited.insert(enterpoint_id);
+        visited.insert(internal_id); // skip self
+
+        while (!searchCandidates.empty()) {
+            auto [c_dist, search_id] = searchCandidates.top();
+            searchCandidates.pop();
+
+            if (candidates.size() >= efConstruction_ && c_dist > candidates.top().first) {
+                break;
+            }
+
+            const LinkListView& ll = link_lists_.getLinkList(search_id, level);
+            for (size_t i = 0; i < ll.size; ++i) {
+                InternalId cand_id = ll.data[i];
+                if (visited.find(cand_id) != visited.end()) continue;
+                visited.insert(cand_id);
+                dist_t d = dist_func_(point_store_.getData(internal_id),
+                                      point_store_.getData(cand_id), dim_);
+                if (candidates.size() < efConstruction_ || d < candidates.top().first) {
+                    searchCandidates.emplace(d, cand_id);
+                    candidates.emplace(d, cand_id);
+                    if (candidates.size() > efConstruction_) {
+                        candidates.pop();
+                    }
+                }
+            }
         }
 
         getNeighborsByHeuristic2(candidates, link_lists_.getM(level));
@@ -198,7 +227,6 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         link_list.size = 0;
         while (!candidates.empty()) {
             auto candidate_id = candidates.top().second;
-            // printf("  Adding neighbor %u to point %u at level %zu\n", candidate_id, internal_id, level);
             link_list.data[link_list.size++] = candidate_id;
             candidates.pop();
         }
@@ -209,13 +237,27 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     }
 
     void updateExistPointAtLevel(InternalId internal_id, InternalId new_id, size_t level) {
-        // printf("Updating existing point %u at level %zu with new point %u\n", internal_id, level, new_id);
-        auto all_neighbors = getTwoHopNeighborsOnLevel(internal_id, level);
-        all_neighbors.emplace_back(new_id);
-        auto candidates = std::priority_queue<std::pair<dist_t, InternalId>>();
-        for(auto cand: all_neighbors) {
-            dist_t dist = dist_func_(point_store_.getData(internal_id), point_store_.getData(cand), dim_);
-            candidates.push({dist, cand});
+        // Recompute the neighbor list for an existing node that just got a new candidate (new_id).
+        // Collect all current neighbors plus new_id as the candidate pool.
+        BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
+        std::set<InternalId> seen;
+        seen.insert(internal_id); // skip self
+
+        // Current neighbors of internal_id
+        const LinkListView& cur_ll = link_lists_.getLinkList(internal_id, level);
+        for (size_t i = 0; i < cur_ll.size; ++i) {
+            InternalId nb = cur_ll.data[i];
+            if (seen.insert(nb).second) {
+                dist_t d = dist_func_(point_store_.getData(internal_id),
+                                      point_store_.getData(nb), dim_);
+                candidates.emplace(d, nb);
+            }
+        }
+        // Add the new candidate
+        if (seen.insert(new_id).second) {
+            dist_t d = dist_func_(point_store_.getData(internal_id),
+                                  point_store_.getData(new_id), dim_);
+            candidates.emplace(d, new_id);
         }
         while (candidates.size() > efConstruction_) {
             candidates.pop();
@@ -227,7 +269,6 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         link_list.size = 0;
         while (!candidates.empty()) {
             auto candidate_id = candidates.top().second;
-            // printf("  Adding neighbor %u to point %u at level %zu\n", candidate_id, internal_id, level);
             link_list.data[link_list.size++] = candidate_id;
             candidates.pop();
         }
@@ -348,6 +389,11 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
 
         auto topCandidates = searchKnnAtBaseLevel(query_data, nearest_id, nearest_dist, k);
 
+        // Trim to exactly k results
+        while (topCandidates.size() > k) {
+            topCandidates.pop();
+        }
+
         // Prepare final result with labels
         BigTopPQueue<std::pair<dist_t, LabelType>> result;
         while (!topCandidates.empty()) {
@@ -361,7 +407,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     BigTopPQueue<std::pair<dist_t, InternalId>>
     searchKnnAtBaseLevel(const void* query_data, InternalId enterpoint_id, dist_t enterpoint_dist, size_t k) const {
         auto level = 0;
-        auto ef = std::max(k, efConstruction_);
+        auto ef = std::max(k, efSearch_);
 
         SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
         BigTopPQueue<std::pair<dist_t, InternalId>> topCandidates;
@@ -371,9 +417,16 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         topCandidates.emplace(enterpoint_dist, enterpoint_id);
         visited.insert(enterpoint_id);
 
-        while(topCandidates.size() < ef) {
-            auto search_id = searchCandidates.top().second;
+        while (!searchCandidates.empty()) {
+            auto [c_dist, search_id] = searchCandidates.top();
             searchCandidates.pop();
+
+            // Standard HNSW early stop: closest unvisited candidate is farther
+            // than worst in topCandidates and we already have ef results.
+            if (topCandidates.size() >= ef && c_dist > topCandidates.top().first) {
+                break;
+            }
+
             const LinkListView& link_list = link_lists_.getLinkList(search_id, level);
             for (size_t i = 0; i < link_list.size; ++i) {
                 InternalId candidate_id = link_list.data[i];

@@ -39,6 +39,18 @@ target_link_libraries(benchmark_index arena-hnswlib benchmark)
 # Include FetchContent module
 include(FetchContent)
 
+# Optional: build Python bindings
+option(BUILD_ARENA_PYTHON "Build Python bindings via pybind11" OFF)
+
+if(BUILD_ARENA_PYTHON)
+    find_package(pybind11 REQUIRED)
+    pybind11_add_module(_arena_hnswlib_ext python/bindings.cpp)
+    target_include_directories(_arena_hnswlib_ext PRIVATE include)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(_arena_hnswlib_ext PRIVATE -msse2 -mavx -O3)
+    endif()
+endif()
+
 # Fetch GoogleTest
 FetchContent_Declare(
     googletest

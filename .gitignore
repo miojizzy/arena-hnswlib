@@ -1,1 +1,8 @@
-build
+build/
+
+# Python build artifacts
+*.egg-info/
+*.so
+__pycache__/
+*.pyc
+dist/
