@@ -5,6 +5,7 @@
 ## 待处理
 
 ## 已完成
+- [TASK005] Python绑定与VectorDBBench客户端实现 - 2026-02-21完成
 - [TASK004] 实现对齐向量容器 AlignedVector - 2026-02-14完成
 - [TASK003] Bruteforce与HNSW算法基准测试 - 2026-02-06完成
 - [TASK002] 支持L2空间 - 2026-02-06完成
