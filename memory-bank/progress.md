@@ -3,7 +3,8 @@
 ### 已完成功能
 - BruteForceSearch和DataStore类已实现并测试
 - InnerProductSpace和L2Space距离度量已实现并测试
-- L2（欧几里得）距离支持，使用平方L2以提高效率
+- L2（欧几里得）距离支持，使用平方L2以提高效率，AVX SIMD 加速
+- IP（内积）距离支持 AVX SIMD 加速（`IPSqrSIMDAVX<float/double>`，残差路径，USE_AVX 门控）
 - HNSW（HierarchicalNSW）类：核心结构和大部分方法已实现
 - 所有核心组件的单元测试（BruteForceSearch、DataStore、HierarchicalNSW、距离度量）
 - BruteForce和HNSW索引的综合基准测试（构建时间、查询时间、可扩展性）
