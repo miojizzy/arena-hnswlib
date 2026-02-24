@@ -130,13 +130,20 @@ using SmallTopPQueue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 template<typename T>
 using BigTopPQueue = std::priority_queue<T, std::vector<T>, std::less<T>>;
 
-template<typename dist_t>
-class HierarchicalNSW :public AlgorithmInterface<dist_t> {
+// SpaceT requirements (static duck-typing contract):
+//   static dist_t distFunc(const dist_t* a, const dist_t* b, size_t dim)  — inlinable
+//   size_t getDim() const
+//   size_t getDataSize() const
+template<typename dist_t, typename SpaceT>
+class HierarchicalNSW : public AlgorithmInterface<dist_t> {
+    // space_ must be declared before dim_/data_size_ so its ctor runs first
+    // (C++ initializes members in declaration order, not initializer-list order)
+    SpaceT space_; // held by value — compiler can inline SpaceT::distFunc
+
     // basic parameters
     const size_t elementSize_;
     const size_t dim_;
     const size_t data_size_;
-    const DISTFUNC<dist_t> dist_func_;
 
     // hnsw specific parameters
     size_t M_;
@@ -156,11 +163,10 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     mutable VisitedTable visited_table_; // scratch buffer; mutable for use in const search methods
 
  public:
-    HierarchicalNSW(SpacePtr<dist_t> s, size_t elementSize, 
-        size_t M, size_t efConstruction, size_t random_seed=42) 
-        : AlgorithmInterface<dist_t>(std::move(s)), elementSize_(elementSize),
-          dim_(this->space_->getDim()), data_size_(this->space_->getDataSize()),
-          dist_func_(this->space_->getDistFunc()),
+    HierarchicalNSW(SpaceT space, size_t elementSize,
+        size_t M, size_t efConstruction, size_t random_seed=42)
+        : AlgorithmInterface<dist_t>(), space_(std::move(space)), elementSize_(elementSize),
+          dim_(space_.getDim()), data_size_(space_.getDataSize()),
           M_(M), efConstruction_(efConstruction), efSearch_(efConstruction), random_seed_(random_seed),
           point_store_(dim_, elementSize_), label_store_(1, elementSize_),
           link_lists_(M, elementSize_), point_order_(elementSize_), cur_element_count_(0),
@@ -172,8 +178,8 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         std::shuffle(point_order_.begin()+1, point_order_.end(), rng);
     }
 
-    size_t getEfSearch() const { return efSearch_; }
-    void setEfSearch(size_t ef) { efSearch_ = ef; }
+    size_t getEfSearch() const override { return efSearch_; }
+    void setEfSearch(size_t ef) override { efSearch_ = ef; }
 
     void addPoint(const void *data_point, LabelType label_type) override {
         if (cur_element_count_ >= elementSize_) {
@@ -206,7 +212,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         // HNSW index update logic goes here
         // overhigh levels search
         auto nearest_id = enterpoint_id;
-        auto nearest_dist = dist_func_(static_cast<const dist_t*>(data_point), point_store_.getData(enterpoint_id), dim_);
+        auto nearest_dist = SpaceT::distFunc(static_cast<const dist_t*>(data_point), point_store_.getData(enterpoint_id), dim_);
         for (size_t level = link_lists_.getMaxLevel(); level > link_lists_.getLevel(internal_id); --level) {
             std::tie(nearest_dist, nearest_id) = searchNearestAtLevel(data_point, nearest_id, nearest_dist, level);
         }
@@ -219,8 +225,8 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
     void updateNewPointAtLevel(InternalId internal_id, InternalId enterpoint_id, size_t level) {
         // Use beam search (ef = efConstruction_) to find construction candidates,
         // mirroring the standard HNSW SEARCH-LAYER algorithm.
-        dist_t ep_dist = dist_func_(point_store_.getData(internal_id),
-                                    point_store_.getData(enterpoint_id), dim_);
+        dist_t ep_dist = SpaceT::distFunc(point_store_.getData(internal_id),
+                                          point_store_.getData(enterpoint_id), dim_);
 
         SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
         BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
@@ -244,8 +250,8 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
                 InternalId cand_id = ll.data[i];
                 if (visited_table_.isVisited(cand_id)) continue;
                 visited_table_.mark(cand_id);
-                dist_t d = dist_func_(point_store_.getData(internal_id),
-                                      point_store_.getData(cand_id), dim_);
+                dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
+                                            point_store_.getData(cand_id), dim_);
                 if (candidates.size() < efConstruction_ || d < candidates.top().first) {
                     searchCandidates.emplace(d, cand_id);
                     candidates.emplace(d, cand_id);
@@ -288,16 +294,16 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
             InternalId nb = cur_ll.data[i];
             if (!local_seen[nb]) {
                 local_seen[nb] = true;
-                dist_t d = dist_func_(point_store_.getData(internal_id),
-                                      point_store_.getData(nb), dim_);
+                dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
+                                            point_store_.getData(nb), dim_);
                 candidates.emplace(d, nb);
             }
         }
         // Add the new candidate
         if (!local_seen[new_id]) {
             local_seen[new_id] = true;
-            dist_t d = dist_func_(point_store_.getData(internal_id),
-                                  point_store_.getData(new_id), dim_);
+            dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
+                                        point_store_.getData(new_id), dim_);
             candidates.emplace(d, new_id);
         }
         while (candidates.size() > efConstruction_) {
@@ -323,7 +329,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
             const LinkListView& link_list = link_lists_.getLinkList(nearest_id, level);
             for (size_t i = 0; i < link_list.size; ++i) {
                 InternalId candidate_id = link_list.data[i];
-                dist_t dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
+                dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (dist < nearest_dist) {
                     nearest_dist = dist;
                     nearest_id = candidate_id;
@@ -379,7 +385,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
             bool good = true;
 
             for (std::pair<dist_t, InternalId> second_pair : return_list) {
-                dist_t curdist = dist_func_(
+                dist_t curdist = SpaceT::distFunc(
                         point_store_.getData(second_pair.second),
                         point_store_.getData(curent_pair.second),
                         dim_);
@@ -423,7 +429,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
         // HNSW index update logic goes here
         // overhigh levels search
         auto nearest_id = enterpoint_id;
-        auto nearest_dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(enterpoint_id), dim_);
+        auto nearest_dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(enterpoint_id), dim_);
         // Greedy descent from maxLevel down to level 1; level 0 handled by beam search below.
         for (size_t level = link_lists_.getMaxLevel() + 1; level-- > 1; ) {
             std::tie(nearest_dist, nearest_id) = searchNearestAtLevel(query_data, nearest_id, nearest_dist, level);
@@ -476,7 +482,7 @@ class HierarchicalNSW :public AlgorithmInterface<dist_t> {
                     continue;
                 }
                 visited_table_.mark(candidate_id);
-                dist_t dist = dist_func_(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
+                dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (topCandidates.size() < ef || dist < topCandidates.top().first) {
                     searchCandidates.emplace(dist, candidate_id);
                     topCandidates.emplace(dist, candidate_id);

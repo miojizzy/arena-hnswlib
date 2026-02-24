@@ -21,7 +21,7 @@ public:
 template<typename dist_t>
 class MockAlgorithm : public AlgorithmInterface<dist_t> {
 public:
-    MockAlgorithm(SpacePtr<dist_t> s) : AlgorithmInterface<dist_t>(std::move(s)) {}
+    MockAlgorithm() : AlgorithmInterface<dist_t>() {}
 
     void addPoint(const void *data_point, LabelType label_type) override {
         // Mock implementation
@@ -41,7 +41,6 @@ TEST(SpaceInterfaceTest, BasicFunctionality) {
 }
 
 TEST(AlgorithmInterfaceTest, BasicFunctionality) {
-    auto space = std::make_unique<MockSpace<float>>();
-    MockAlgorithm<float> algorithm(std::move(space));
+    MockAlgorithm<float> algorithm;
     // Add more tests for addPoint and searchKnn as needed
 }

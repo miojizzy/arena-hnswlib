@@ -120,12 +120,18 @@ class L2Space : public SpaceInterface<dist_t> {
     size_t dim_;
 
  public:
-    L2Space(size_t dim) {
+    explicit L2Space(size_t dim) {
         fstdistfunc_ = L2SquaredDistance<dist_t>;
         dim_ = dim;
         data_size_ = dim * sizeof(dist_t);
     }
     ~L2Space() override {}
+
+    // Static inline distance function — callable by HierarchicalNSW<dist_t, L2Space<dist_t>>
+    // without going through a function pointer, enabling compiler inlining and auto-vectorization.
+    static inline dist_t distFunc(const dist_t* a, const dist_t* b, size_t dim) {
+        return L2SquaredDistance<dist_t>(a, b, dim);
+    }
 
     const DISTFUNC<dist_t>& getDistFunc() const override {
         return fstdistfunc_;

@@ -1,5 +1,8 @@
 build/
 
+# Temporary benchmark output (use --save to update canonical files)
+logs/benchmark_tmp.txt
+
 # Python build artifacts
 *.egg-info/
 *.so

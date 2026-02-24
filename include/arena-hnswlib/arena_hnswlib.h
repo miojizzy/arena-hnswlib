@@ -49,17 +49,18 @@ using SpacePtr = std::unique_ptr<SpaceInterface<dist_t>>;
 template<typename dist_t>
 class AlgorithmInterface {
 public:
-    AlgorithmInterface(SpacePtr<dist_t> s) : space_(std::move(s)) {}
+    AlgorithmInterface() = default;
 
     virtual void addPoint(const void *data_point, LabelType label_type) = 0;
 
     virtual std::priority_queue<std::pair<dist_t, LabelType>>
         searchKnn(const void*, size_t) const = 0;
 
-    virtual ~AlgorithmInterface() {}
+    // Optional: query-time search parameter (only meaningful for HNSW-like indices)
+    virtual size_t getEfSearch() const { return 0; }
+    virtual void setEfSearch(size_t) {}
 
-protected:
-    SpacePtr<dist_t> space_;
+    virtual ~AlgorithmInterface() {}
 };
 
 

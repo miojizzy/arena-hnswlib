@@ -90,21 +90,38 @@ class PyBruteForce {
 // ---------------------------------------------------------------------------
 // HNSW Python wrapper
 // ---------------------------------------------------------------------------
+
+// Factory: instantiate the concrete template specialisation based on metric string.
+// Returns AlgorithmInterface<float> so PyHNSW remains unaware of the SpaceT type.
+// The concrete type (L2Space / InnerProductSpace) is baked in at compile time,
+// enabling the compiler to inline and auto-vectorize the distance function.
+static std::unique_ptr<AlgorithmInterface<float>>
+makeHNSW(const std::string& metric, size_t dim, size_t max_elements,
+         size_t m, size_t ef_construction) {
+    if (metric == "l2" || metric == "L2") {
+        return std::make_unique<HierarchicalNSW<float, L2Space<float>>>(
+            L2Space<float>(dim), max_elements, m, ef_construction);
+    } else if (metric == "ip" || metric == "IP" || metric == "cosine") {
+        return std::make_unique<HierarchicalNSW<float, InnerProductSpace<float>>>(
+            InnerProductSpace<float>(dim), max_elements, m, ef_construction);
+    }
+    throw std::invalid_argument("Unknown metric: " + metric + ". Use 'l2' or 'ip'.");
+}
+
 class PyHNSW {
     size_t dim_;
     std::string metric_;
-    std::unique_ptr<HierarchicalNSW<float>> index_;
+    std::unique_ptr<AlgorithmInterface<float>> index_;
 
  public:
     PyHNSW(size_t dim, size_t max_elements, size_t m = 16,
            size_t ef_construction = 200, const std::string& metric = "l2")
         : dim_(dim), metric_(metric) {
-        index_ = std::make_unique<HierarchicalNSW<float>>(
-            makeSpace(metric, dim), max_elements, m, ef_construction);
+        index_ = makeHNSW(metric, dim, max_elements, m, ef_construction);
     }
 
     size_t get_ef_search() const { return index_->getEfSearch(); }
-    void   set_ef_search(size_t ef) { index_->setEfSearch(ef); }
+    void set_ef_search(size_t ef) { index_->setEfSearch(ef); }
 
     void add_items(py::array_t<float, py::array::c_style | py::array::forcecast> data,
                    py::array_t<uint32_t, py::array::c_style | py::array::forcecast> ids) {

@@ -27,12 +27,18 @@ class InnerProductSpace : public SpaceInterface<dist_t> {
     size_t dim_;
 
  public:
-    InnerProductSpace(size_t dim) {
+    explicit InnerProductSpace(size_t dim) {
         fstdistfunc_ = InnerProductDistance<dist_t>;
         dim_ = dim;
         data_size_ = dim * sizeof(dist_t);
     }
     ~InnerProductSpace() override {}
+
+    // Static inline distance function — callable by HierarchicalNSW<dist_t, InnerProductSpace<dist_t>>
+    // without going through a function pointer, enabling compiler inlining.
+    static inline dist_t distFunc(const dist_t* a, const dist_t* b, size_t dim) {
+        return InnerProductDistance<dist_t>(a, b, dim);
+    }
 
     const DISTFUNC<dist_t>& getDistFunc() const override {
         return fstdistfunc_;

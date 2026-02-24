@@ -10,8 +10,7 @@ TEST(HierarchicalNSWTest, Initialization) {
     size_t max_elements = 3;
     size_t M = 2;
     size_t ef = 2;
-    auto space = std::make_unique<InnerProductSpace<float>>(dim);
-    HierarchicalNSW<float> hnsw(std::move(space), max_elements, M, ef, 42);
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(InnerProductSpace<float>(dim), max_elements, M, ef, 42);
 
     // 构造数据点
     std::vector<std::vector<float>> points = {
@@ -32,8 +31,7 @@ TEST(HierarchicalNSWTest, AddPointAndSearch) {
     size_t max_elements = 10;
     size_t M = 2;
     size_t ef = 2;
-    auto space = std::make_unique<InnerProductSpace<float>>(dim);
-    HierarchicalNSW<float> hnsw(std::move(space), max_elements, M, ef, 42);
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(InnerProductSpace<float>(dim), max_elements, M, ef, 42);
 
     // 构造数据点
     std::vector<std::vector<float>> points = {
@@ -67,8 +65,7 @@ TEST(HierarchicalNSWTest, AddPointExceedsMaxElements) {
     size_t max_elements = 1;
     size_t M = 2;
     size_t ef = 2;
-    auto space = std::make_unique<InnerProductSpace<float>>(dim);
-    HierarchicalNSW<float> hnsw(std::move(space), max_elements, M, ef, 42);
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(InnerProductSpace<float>(dim), max_elements, M, ef, 42);
 
     float point1[3] = {1.0f, 2.0f, 3.0f};
     float point2[3] = {4.0f, 5.0f, 6.0f};

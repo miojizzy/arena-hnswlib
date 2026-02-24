@@ -104,7 +104,7 @@ public:
     static constexpr uint32_t SEED = 42;
     static constexpr bool NORMALIZE = false;
 
-    std::unique_ptr<HierarchicalNSW<float>> index;
+    std::unique_ptr<HierarchicalNSW<float, L2Space<float>>> index;
     std::vector<std::vector<float>> data_points;
     std::vector<std::vector<float>> query_points;
 
@@ -115,8 +115,7 @@ public:
         query_points = gen.generateBatch(QUERY_SIZE);
 
         // Create index
-        auto space = std::make_unique<L2Space<float>>(DIM);
-        index = std::make_unique<HierarchicalNSW<float>>(std::move(space), DATA_SIZE, M, EF_CONSTRUCTION, SEED);
+        index = std::make_unique<HierarchicalNSW<float, L2Space<float>>>(L2Space<float>(DIM), DATA_SIZE, M, EF_CONSTRUCTION, SEED);
     }
 
     void TearDown(const ::benchmark::State& state) override {
@@ -179,8 +178,7 @@ BENCHMARK_F(BruteForceFixture, QueryBatch)(benchmark::State& state) {
 BENCHMARK_F(HNSWFixture, BuildIndex)(benchmark::State& state) {
     for (auto _ : state) {
         state.PauseTiming();
-        auto space = std::make_unique<L2Space<float>>(DIM);
-        auto local_index = std::make_unique<HierarchicalNSW<float>>(std::move(space), DATA_SIZE, M, EF_CONSTRUCTION, SEED);
+        auto local_index = std::make_unique<HierarchicalNSW<float, L2Space<float>>>(L2Space<float>(DIM), DATA_SIZE, M, EF_CONSTRUCTION, SEED);
         state.ResumeTiming();
 
         for (size_t i = 0; i < DATA_SIZE; ++i) {
@@ -266,8 +264,7 @@ static void BM_HNSW_QueryVaryingK(benchmark::State& state) {
     auto query = gen.generate();
 
     // Build index
-    auto space = std::make_unique<L2Space<float>>(dim);
-    auto index = std::make_unique<HierarchicalNSW<float>>(std::move(space), data_size, M, ef_construction, seed);
+    auto index = std::make_unique<HierarchicalNSW<float, L2Space<float>>>(L2Space<float>(dim), data_size, M, ef_construction, seed);
     for (size_t i = 0; i < data_size; ++i) {
         index->addPoint(data_points[i].data(), i);
     }
@@ -324,8 +321,7 @@ static void BM_HNSW_VaryingDataSize(benchmark::State& state) {
     auto query = gen.generate();
 
     // Build index
-    auto space = std::make_unique<L2Space<float>>(dim);
-    auto index = std::make_unique<HierarchicalNSW<float>>(std::move(space), data_size, M, ef_construction, seed);
+    auto index = std::make_unique<HierarchicalNSW<float, L2Space<float>>>(L2Space<float>(dim), data_size, M, ef_construction, seed);
     for (size_t i = 0; i < data_size; ++i) {
         index->addPoint(data_points[i].data(), i);
     }
