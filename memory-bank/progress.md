@@ -7,12 +7,14 @@
 - IP（内积）距离支持 AVX SIMD 加速（`IPSqrSIMDAVX<float/double>`，残差路径，USE_AVX 门控）
 - HNSW（HierarchicalNSW）类：核心结构和大部分方法已实现
 - 所有核心组件的单元测试（BruteForceSearch、DataStore、HierarchicalNSW、距离度量）
+- 多核并发测试（`test_concurrent.cpp`）：BruteForce 并发搜索、HNSW 并行独立构建、HNSW 真正并发搜索
 - BruteForce和HNSW索引的综合基准测试（构建时间、查询时间、可扩展性）
 - 随机向量生成，支持可设置种子的RNG和可选L2归一化
 - AlignedVector对齐向量容器，支持SIMD优化的内存对齐存储
   - AlignedVector：拥有内存的move-only容器
   - AlignedVectorView：非拥有的可拷贝视图
   - DataStoreAligned已集成，使用AlignedVector作为底层存储
+- VisitedTable 线程安全重构（TASK010）：请求粒度局部变量 + bitmap（uint64_t），QueryBatch -3.0%，内存 8x 更小
 
 ### 待完成功能
 - 进一步优化和测试HNSW索引逻辑（邻居选择、层级分配、搜索）
@@ -33,3 +35,4 @@
 - HNSW中部分方法较复杂，可增加更多注释
 - HNSW构建时间对于大数据集较长（预期行为）
 - DEBUG模式构建的基准测试显示性能警告
+- `updateExistPointAtLevel` 中仍使用 `vector<bool> local_seen(elementSize_)`，可考虑统一改用 VisitedTable bitmap

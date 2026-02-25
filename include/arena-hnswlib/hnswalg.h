@@ -11,33 +11,22 @@
 namespace arena_hnswlib {
 
 
-// O(1) visited-set backed by a flat uint8_t array + dirty list for fast reset.
-// Avoids the heap fragmentation and O(log n) cost of std::set.
+// Visited-set backed by a bitmap (1 bit per element).
+// 8x smaller than a uint8_t array → better cache utilization for large indexes.
+// Zero-initialization cost is also 8x lower on each per-request construction.
 class VisitedTable {
-    std::vector<uint8_t> table_;
-    std::vector<InternalId> dirty_;
+    std::vector<uint64_t> table_;
 
  public:
-    explicit VisitedTable(size_t capacity) : table_(capacity, 0) {
-        dirty_.reserve(256);
-    }
+    explicit VisitedTable(size_t capacity)
+        : table_((capacity + 63) / 64, 0) {}
 
     inline void mark(InternalId id) {
-        table_[id] = 1;
-        dirty_.push_back(id);
+        table_[id >> 6] |= (uint64_t(1) << (id & 63));
     }
 
     inline bool isVisited(InternalId id) const {
-        return table_[id] != 0;
-    }
-
-    // Mark without recording in dirty list (use only when reset() will do full clear)
-    // For our use case we always use mark() + reset().
-    void reset() {
-        for (InternalId id : dirty_) {
-            table_[id] = 0;
-        }
-        dirty_.clear();
+        return (table_[id >> 6] >> (id & 63)) & 1;
     }
 };
 
@@ -160,7 +149,6 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
     std::vector<size_t> point_order_;
     size_t cur_element_count_;
-    mutable VisitedTable visited_table_; // scratch buffer; mutable for use in const search methods
 
  public:
     HierarchicalNSW(SpaceT space, size_t elementSize,
@@ -169,8 +157,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
           dim_(space_.getDim()), data_size_(space_.getDataSize()),
           M_(M), efConstruction_(efConstruction), efSearch_(efConstruction), random_seed_(random_seed),
           point_store_(dim_, elementSize_), label_store_(1, elementSize_),
-          link_lists_(M, elementSize_), point_order_(elementSize_), cur_element_count_(0),
-          visited_table_(elementSize_) {
+          link_lists_(M, elementSize_), point_order_(elementSize_), cur_element_count_(0) {
         
         // 填充point_order_，并打乱顺序
         std::iota(point_order_.begin(), point_order_.end(), 0);
@@ -230,9 +217,9 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
         SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
         BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
-        visited_table_.reset();
-        visited_table_.mark(enterpoint_id);
-        visited_table_.mark(internal_id); // skip self
+        VisitedTable visited_table(elementSize_);
+        visited_table.mark(enterpoint_id);
+        visited_table.mark(internal_id); // skip self
 
         searchCandidates.emplace(ep_dist, enterpoint_id);
         candidates.emplace(ep_dist, enterpoint_id);
@@ -248,8 +235,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             const LinkListView& ll = link_lists_.getLinkList(search_id, level);
             for (size_t i = 0; i < ll.size; ++i) {
                 InternalId cand_id = ll.data[i];
-                if (visited_table_.isVisited(cand_id)) continue;
-                visited_table_.mark(cand_id);
+                if (visited_table.isVisited(cand_id)) continue;
+                visited_table.mark(cand_id);
                 dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
                                             point_store_.getData(cand_id), dim_);
                 if (candidates.size() < efConstruction_ || d < candidates.top().first) {
@@ -280,9 +267,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     void updateExistPointAtLevel(InternalId internal_id, InternalId new_id, size_t level) {
         // Recompute the neighbor list for an existing node that just got a new candidate (new_id).
         // Collect all current neighbors plus new_id as the candidate pool.
-        // Note: visited_table_ is already reset()+marked for the outer updateNewPointAtLevel call.
-        // We use a local seen set here since this function is called per-neighbor and we must
-        // not interfere with the outer visited_table_ state.
+        // Use a local seen vector — candidate pool is bounded by M+1 neighbors.
         BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
         // Use a small local unordered_set — the candidate pool is bounded by M+1 neighbors.
         std::vector<bool> local_seen(elementSize_, false);
@@ -459,8 +444,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
         SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
         BigTopPQueue<std::pair<dist_t, InternalId>> topCandidates;
-        visited_table_.reset();
-        visited_table_.mark(enterpoint_id);
+        VisitedTable visited_table(elementSize_);
+        visited_table.mark(enterpoint_id);
 
         searchCandidates.emplace(enterpoint_dist, enterpoint_id);
         topCandidates.emplace(enterpoint_dist, enterpoint_id);
@@ -478,10 +463,10 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             const LinkListView& link_list = link_lists_.getLinkList(search_id, level);
             for (size_t i = 0; i < link_list.size; ++i) {
                 InternalId candidate_id = link_list.data[i];
-                if (visited_table_.isVisited(candidate_id)) {
+                if (visited_table.isVisited(candidate_id)) {
                     continue;
                 }
-                visited_table_.mark(candidate_id);
+                visited_table.mark(candidate_id);
                 dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (topCandidates.size() < ef || dist < topCandidates.top().first) {
                     searchCandidates.emplace(dist, candidate_id);

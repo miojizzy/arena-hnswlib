@@ -39,3 +39,8 @@ add_test(NAME test_math_utils COMMAND test_math_utils)
 add_executable(test_aligned_vector test_aligned_vector.cpp)
 target_link_libraries(test_aligned_vector arena-hnswlib gtest gtest_main pthread)
 add_test(NAME test_aligned_vector COMMAND test_aligned_vector)
+
+# 多核并发测试
+add_executable(test_concurrent test_concurrent.cpp)
+target_link_libraries(test_concurrent arena-hnswlib gtest gtest_main pthread)
+add_test(NAME test_concurrent COMMAND test_concurrent)

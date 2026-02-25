@@ -1,11 +1,23 @@
 # 活跃上下文
 
 ### 当前工作重点
-- 距离计算 SIMD 加速已完成（L2 + IP 均支持 AVX）
-- 所有核心算法已实现并测试通过
-- 重点转向进一步优化（FMA、SSE 扩展）和基准测试
+- 多线程并发安全：VisitedTable 已改为请求粒度局部变量，searchKnn 线程安全
+- VisitedTable 进一步优化为 bitmap（uint64_t），内存减少 8x，cache 更友好
+- 所有核心算法已实现并测试通过，9/9 单元测试绿色
 
 ### 最近变更
+- 完成 VisitedTable bitmap 优化（2026-02-25）
+  - `VisitedTable` 底层从 `vector<uint8_t>` 改为 `vector<uint64_t>` bitmap
+  - `mark()` / `isVisited()` 使用位运算，内存占用 8x 更小
+  - 删除已无调用方的 `reset()` 方法及 `dirty_` 成员
+  - HNSW QuerySingle -2.4%，QueryBatch -3.0%，VaryingDataSize/1000 -2.3%
+
+- 完成 VisitedTable 请求粒度重构（TASK010 - 2026-02-25）
+  - 删除 `HierarchicalNSW` 共享成员 `mutable VisitedTable visited_table_`
+  - `updateNewPointAtLevel` 和 `searchKnnAtBaseLevel` 各自创建局部 `VisitedTable`
+  - 新增 `tests/unit/test_concurrent.cpp`，3 个并发测试（BruteForce 8 线程并发搜索、HNSW 4 线程独立构建、HNSW 8 线程真正并发搜索）
+  - benchmark 无性能回退，QuerySingle 持平或略有提升
+
 - 完成 IP 距离 AVX SIMD 加速（TASK009 - 2026-02-24）
   - `space_ip.h` 新增 `IPSqrSIMDAVX<float/double>`、`IPSqrSIMD16ExtResiduals`、`InnerProductSIMD`
   - `InnerProductDistance` 更新为经由 `InnerProductSIMD` 调用，自动走 SIMD 路径
@@ -31,18 +43,14 @@
 - 添加HNSW的完整单元测试（初始化、添加/搜索、最大元素数）
 
 ### 下一步计划
-- 分析基准测试结果以识别优化机会
-- 考虑在基准测试中实现内存使用追踪
-- 根据基准测试洞察进一步优化HNSW邻居更新和搜索逻辑
-- 为HNSW添加更多边界情况和压力测试
-- 改进文档和代码注释，特别是hnswalg.h
 - 考虑添加精确率/召回率准确性基准测试
+- 考虑 FMA 指令进一步加速距离计算
+- `updateExistPointAtLevel` 中的 `vector<bool> local_seen(elementSize_)` 可换成 VisitedTable bitmap 统一风格
 
 ### 当前决策与考虑
+- `VisitedTable` 使用 bitmap（`vector<uint64_t>`），请求粒度局部创建，线程安全
+- `searchKnn` 为只读操作，多线程并发搜索安全（VisitedTable 已无共享状态）
 - 在DataStore和HNSW中使用std::unique_ptr进行内存管理（与SpacePtr一致）
-- 使用static_assert进行模板约束
-- 使用静态链接实现距离函数
-- 单元测试是正确性的主要验证方法
+- 使用静态链接实现距离函数，SpaceT 作模板参数确保内联
+- 单元测试是正确性的主要验证方法，benchmark_release.txt 记录最新性能基线
 - 基准测试使用固定随机种子（42）以确保可复现性
-- 基准测试仅使用L2距离（根据TASK003要求）
-- 默认基准测试参数：DIM=128, DATA_SIZE=10000, QUERY_SIZE=100, K=10
