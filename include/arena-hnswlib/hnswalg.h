@@ -58,10 +58,16 @@ class LinkLists {
         maxLevel_ = level_sizes.size() - 1;
 
         // 分配 internal id 到 level 的映射
+        // 按照 level_sizes 的累计边界将 internal id 分配到对应层级：
+        //   ids [0,          level_sizes[maxLevel_]) → maxLevel_
+        //   ids [level_sizes[maxLevel_], level_sizes[maxLevel_-1]) → maxLevel_-1
+        //   ...
+        //   ids [level_sizes[1], level_sizes[0]) → 0
         internal_id_level_.resize(elementSize_, 0);
         auto level = maxLevel_;
         for(auto i = 0; i < elementSize_; ++i) {
-            if (i < level_sizes[level - 1] && level > 0) {
+            // 当 i 跨过当前层级的上界时下降一层
+            if (level > 0 && i >= level_sizes[level]) {
                 --level;
             }
             internal_id_level_[i] = level;
@@ -265,43 +271,35 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     }
 
     void updateExistPointAtLevel(InternalId internal_id, InternalId new_id, size_t level) {
-        // Recompute the neighbor list for an existing node that just got a new candidate (new_id).
-        // Collect all current neighbors plus new_id as the candidate pool.
-        // Use a local seen vector — candidate pool is bounded by M+1 neighbors.
-        BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
-        // Use a small local unordered_set — the candidate pool is bounded by M+1 neighbors.
-        std::vector<bool> local_seen(elementSize_, false);
-        local_seen[internal_id] = true; // skip self
-
-        // Current neighbors of internal_id
-        const LinkListView& cur_ll = link_lists_.getLinkList(internal_id, level);
-        for (size_t i = 0; i < cur_ll.size; ++i) {
-            InternalId nb = cur_ll.data[i];
-            if (!local_seen[nb]) {
-                local_seen[nb] = true;
-                dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
-                                            point_store_.getData(nb), dim_);
-                candidates.emplace(d, nb);
-            }
-        }
-        // Add the new candidate
-        if (!local_seen[new_id]) {
-            local_seen[new_id] = true;
-            dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
-                                        point_store_.getData(new_id), dim_);
-            candidates.emplace(d, new_id);
-        }
-        while (candidates.size() > efConstruction_) {
-            candidates.pop();
-        }
-
-        getNeighborsByHeuristic2(candidates, link_lists_.getM(level));
-
+        // Update the neighbor list for an existing node that just gained a new candidate (new_id).
+        // Fast-path (hnswlib parity): if the list is not yet full, just append.
+        // Only run the expensive heuristic when the list is already at capacity.
         LinkListView& link_list = link_lists_.getLinkList(internal_id, level);
+        const size_t Mcurmax = link_lists_.getM(level);
+
+        if (link_list.size < Mcurmax) {
+            // List not full — plain append, no distance computation needed.
+            link_list.data[link_list.size++] = new_id;
+            return;
+        }
+
+        // List is full — collect current neighbors + new_id, then prune with heuristic.
+        BigTopPQueue<std::pair<dist_t, InternalId>> candidates;
+        dist_t d_new = SpaceT::distFunc(point_store_.getData(internal_id),
+                                        point_store_.getData(new_id), dim_);
+        candidates.emplace(d_new, new_id);
+        for (size_t i = 0; i < link_list.size; ++i) {
+            InternalId nb = link_list.data[i];
+            dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
+                                        point_store_.getData(nb), dim_);
+            candidates.emplace(d, nb);
+        }
+
+        getNeighborsByHeuristic2(candidates, Mcurmax);
+
         link_list.size = 0;
         while (!candidates.empty()) {
-            auto candidate_id = candidates.top().second;
-            link_list.data[link_list.size++] = candidate_id;
+            link_list.data[link_list.size++] = candidates.top().second;
             candidates.pop();
         }
     }
@@ -354,6 +352,11 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
     BigTopPQueue<std::pair<dist_t, InternalId>>
     getNeighborsByHeuristic2(BigTopPQueue<std::pair<dist_t, InternalId>> &top_candidates, const size_t M) {
+        // Fast-path (hnswlib parity): when candidate count ≤ M all of them will
+        // be selected anyway — skip the O(N²) inter-candidate distance work.
+        if (top_candidates.size() <= M) {
+            return top_candidates;
+        }
         BigTopPQueue<std::pair<dist_t, InternalId>> queue_closest;
         std::vector<std::pair<dist_t, InternalId>> return_list;
         while (top_candidates.size() > 0) {

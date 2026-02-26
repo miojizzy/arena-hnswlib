@@ -6,6 +6,14 @@
 - 所有核心算法已实现并测试通过，9/9 单元测试绿色
 
 ### 最近变更
+- 完成 AddPoint 性能修复（TASK011 - 2026-02-26）
+  - `LinkLists::init()` 层级分配条件由 `i < level_sizes[level-1]` 修正为 `i >= level_sizes[level]`，恢复正确的多层图结构（level≥1 节点：2 → 63）
+  - `updateExistPointAtLevel` 添加快速路径：列表未满直接 append（O(1)），仅已满时运行 heuristic（主性能修复）
+  - `getNeighborsByHeuristic2` 添加 early-exit：size ≤ M 时直接返回（次要修复）
+  - 删除旧实现中的 `std::vector<bool>(elementSize_)` 无意义去重结构
+  - `HNSWFixture/BuildIndex`：60.8 ms → 41.5 ms（**-32%**），85/85 测试全绿
+  - benchmark_release.txt 已更新（2026-02-26）
+
 - 完成 VisitedTable bitmap 优化（2026-02-25）
   - `VisitedTable` 底层从 `vector<uint8_t>` 改为 `vector<uint64_t>` bitmap
   - `mark()` / `isVisited()` 使用位运算，内存占用 8x 更小
@@ -45,7 +53,6 @@
 ### 下一步计划
 - 考虑添加精确率/召回率准确性基准测试
 - 考虑 FMA 指令进一步加速距离计算
-- `updateExistPointAtLevel` 中的 `vector<bool> local_seen(elementSize_)` 可换成 VisitedTable bitmap 统一风格
 
 ### 当前决策与考虑
 - `VisitedTable` 使用 bitmap（`vector<uint64_t>`），请求粒度局部创建，线程安全
