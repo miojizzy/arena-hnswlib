@@ -53,7 +53,10 @@ RUN git lfs install
 # 安装 code-server 和扩展
 RUN curl -fsSL https://code-server.dev/install.sh | sh \
     && code-server --install-extension cnbcool.cnb-welcome \
-    && code-server --install-extension tencent-cloud.coding-copilot
+    && code-server --install-extension tencent-cloud.coding-copilot \
+    && code-server --install-extension github.copilot-chat \
+    && code-server --install-extension ms-vscode.cmake-tools \
+    && code-server --install-extension ms-vscode.cpp-devtools
 
 # 安装 Oh My Zsh 和插件
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended \
