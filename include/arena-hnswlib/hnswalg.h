@@ -52,10 +52,16 @@ class LinkLists {
         level_sizes.emplace_back(elementSize_); // 所有元素都在0层
         // 每层的数量递减，按照 M_ 比例递减
         while(level_sizes.back() > M_) {
-            auto num = static_cast<size_t>(std::ceil(level_sizes.back() * 1.0 / M_));
+            auto num = static_cast<size_t>(std::floor(level_sizes.back() * 1.0 / M_));
             level_sizes.emplace_back(num);
         }
         maxLevel_ = level_sizes.size() - 1;
+        // 确保入口节点(id=0)是最高层唯一节点：
+        // while 循环以 > M_ 为条件结束，最终 level_sizes.back() 可能等于 M_（如2），
+        // 导致最高层有多个节点。强制设为1，保证 id=0 是最高层的唯一入口。
+        if (maxLevel_ > 0) {
+            level_sizes.back() = 1;
+        }
 
         // 分配 internal id 到 level 的映射
         // 按照 level_sizes 的累计边界将 internal id 分配到对应层级：

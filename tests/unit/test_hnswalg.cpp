@@ -5,6 +5,44 @@
 
 using namespace arena_hnswlib;
 
+TEST(HierarchicalNSWTest, LinkListInitialization) {
+    size_t M = 2;
+    size_t elementSize = 5;
+    LinkLists linkLists(M, elementSize);
+    // floor(5/2)=2，floor(2/2)=1（停止），强制顶层=1
+    // level_sizes = [5, 1]，maxLevel=1（0层5个，1层1个）
+    EXPECT_EQ(linkLists.getMaxLevel(), 1);
+    // id=0 是唯一的顶层入口节点
+    EXPECT_EQ(linkLists.getLevel(0), 1);
+    EXPECT_EQ(linkLists.getLevel(1), 0);
+    EXPECT_EQ(linkLists.getLevel(2), 0);
+    EXPECT_EQ(linkLists.getLevel(3), 0);
+    EXPECT_EQ(linkLists.getLevel(4), 0);
+}
+
+TEST(HierarchicalNSWTest, LinkListInitializationM4) {
+    size_t M = 4;
+    size_t elementSize = 20;
+    LinkLists linkLists(M, elementSize);
+    // floor(20/4)=5, floor(5/4)=1（停止），顶层已是1无需强制
+    // level_sizes = [20, 5, 1]，maxLevel=2（0层20个，1层5个，2层1个）
+    EXPECT_EQ(linkLists.getMaxLevel(), 2);
+    // 链表大小：level0 = 2*M+1 = 9，level1/2 = M+1 = 5
+    EXPECT_EQ(linkLists.getLinkListSize(0), 2 * M + 1);
+    EXPECT_EQ(linkLists.getLinkListSize(1), M + 1);
+    EXPECT_EQ(linkLists.getLinkListSize(2), M + 1);
+    // id=0 是唯一的顶层(level 2)入口节点
+    EXPECT_EQ(linkLists.getLevel(0), 2);
+    // id=1..4 在 level 1
+    for (size_t i = 1; i <= 4; ++i) {
+        EXPECT_EQ(linkLists.getLevel(i), 1) << "id=" << i;
+    }
+    // id=5..19 在 level 0
+    for (size_t i = 5; i < elementSize; ++i) {
+        EXPECT_EQ(linkLists.getLevel(i), 0) << "id=" << i;
+    }
+}
+
 TEST(HierarchicalNSWTest, Initialization) {
     size_t dim = 3;
     size_t max_elements = 3;
