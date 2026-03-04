@@ -7,9 +7,16 @@
 #include <stdexcept>
 #include <numeric>
 #include <set>
+#include <algorithm>
 
 namespace arena_hnswlib {
 
+// 0层邻居选择模式
+enum class Layer0NeighborMode {
+  kDoubleM,              // 0层使用 2*M 个启发式邻居（默认，现有逻辑）
+  kHeuristicOnly,        // 0层只使用 M 个启发式邻居
+  kHeuristicPlusClosest  // 0层使用 M 个启发式邻居 + M 个最近距离邻居
+};
 
 // Visited-set backed by a bitmap (1 bit per element).
 // 8x smaller than a uint8_t array → better cache utilization for large indexes.
@@ -38,6 +45,7 @@ struct LinkListView {
 
 class LinkLists {
     const size_t M_, M0_;
+    const Layer0NeighborMode mode_;
     const size_t elementSize_;
 
     size_t maxLevel_;
@@ -104,9 +112,15 @@ class LinkLists {
         return getM(level) + 1;
     }
 
+    inline Layer0NeighborMode getMode() const { return mode_; }
+
  public:
-    LinkLists(size_t M, size_t elementSize) 
-        : M_(M), M0_(2*M), elementSize_(elementSize){
+    LinkLists(size_t M, size_t elementSize, 
+              Layer0NeighborMode mode = Layer0NeighborMode::kDoubleM) 
+        : M_(M), 
+          M0_(mode == Layer0NeighborMode::kHeuristicOnly ? M : 2*M),
+          mode_(mode),
+          elementSize_(elementSize){
         init();
     }
     
@@ -151,6 +165,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     size_t efConstruction_;
     size_t efSearch_;
     size_t random_seed_;
+    Layer0NeighborMode layer0_mode_;
 
     // data stores
     DataStoreAligned<dist_t, 64> point_store_;
@@ -164,12 +179,15 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
  public:
     HierarchicalNSW(SpaceT space, size_t elementSize,
-        size_t M, size_t efConstruction, size_t random_seed=42)
+        size_t M, size_t efConstruction, 
+        size_t random_seed = 42,
+        Layer0NeighborMode layer0_mode = Layer0NeighborMode::kDoubleM)
         : AlgorithmInterface<dist_t>(), space_(std::move(space)), elementSize_(elementSize),
           dim_(space_.getDim()), data_size_(space_.getDataSize()),
           M_(M), efConstruction_(efConstruction), efSearch_(efConstruction), random_seed_(random_seed),
+          layer0_mode_(layer0_mode),
           point_store_(dim_, elementSize_), label_store_(1, elementSize_),
-          link_lists_(M, elementSize_), point_order_(elementSize_), cur_element_count_(0) {
+          link_lists_(M, elementSize_, layer0_mode), point_order_(elementSize_), cur_element_count_(0) {
         
         // 填充point_order_，并打乱顺序
         std::iota(point_order_.begin(), point_order_.end(), 0);
@@ -261,7 +279,16 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             }
         }
 
-        getNeighborsByHeuristic2(candidates, link_lists_.getM(level));
+        const size_t M_cur = link_lists_.getM(level);
+        
+        // 根据模式和层级选择邻居
+        if (level == 0 && layer0_mode_ == Layer0NeighborMode::kHeuristicPlusClosest) {
+            // 模式3: M 个启发式 + M 个最近邻居
+            selectHeuristicPlusClosest(candidates, M_cur / 2);
+        } else {
+            // 模式1, 模式2, 或其他层: 使用启发式选择
+            getNeighborsByHeuristic2(candidates, M_cur);
+        }
 
         LinkListView& link_list = link_lists_.getLinkList(internal_id, level);
         link_list.size = 0;
@@ -301,7 +328,14 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             candidates.emplace(d, nb);
         }
 
-        getNeighborsByHeuristic2(candidates, Mcurmax);
+        // 根据模式和层级选择邻居
+        if (level == 0 && layer0_mode_ == Layer0NeighborMode::kHeuristicPlusClosest) {
+            // 模式3: M 个启发式 + M 个最近邻居
+            selectHeuristicPlusClosest(candidates, Mcurmax / 2);
+        } else {
+            // 模式1, 模式2, 或其他层: 使用启发式选择
+            getNeighborsByHeuristic2(candidates, Mcurmax);
+        }
 
         link_list.size = 0;
         while (!candidates.empty()) {
@@ -398,6 +432,62 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         }
         // 返回结果队列（如需用）
         return top_candidates;
+    }
+
+    // 模式3专用：选择 M 个启发式邻居 + M 个最近邻居
+    // candidates 是大顶堆（按距离），堆顶是距离最远的
+    void selectHeuristicPlusClosest(
+            BigTopPQueue<std::pair<dist_t, InternalId>>& candidates, size_t M) {
+        // 1. 备份所有候选者
+        std::vector<std::pair<dist_t, InternalId>> all_candidates;
+        while (!candidates.empty()) {
+            all_candidates.push_back(candidates.top());
+            candidates.pop();
+        }
+        
+        // 2. 恢复候选者用于启发式选择
+        BigTopPQueue<std::pair<dist_t, InternalId>> temp_queue;
+        for (const auto& p : all_candidates) {
+            temp_queue.push(p);
+        }
+        
+        // 3. 启发式选择 M 个邻居
+        getNeighborsByHeuristic2(temp_queue, M);
+        
+        // 4. 收集启发式选中的 ID
+        std::set<InternalId> heuristic_ids;
+        std::vector<std::pair<dist_t, InternalId>> heuristic_results;
+        while (!temp_queue.empty()) {
+            heuristic_ids.insert(temp_queue.top().second);
+            heuristic_results.push_back(temp_queue.top());
+            temp_queue.pop();
+        }
+        
+        // 5. 从剩余候选者中选择最近的 M 个
+        // all_candidates 按距离从大到小排列，需要重新排序
+        std::vector<std::pair<dist_t, InternalId>> remaining;
+        for (const auto& p : all_candidates) {
+            if (heuristic_ids.find(p.second) == heuristic_ids.end()) {
+                remaining.push_back(p);  // p.first 是距离（大顶堆中是大的在前）
+            }
+        }
+        // remaining 已经按距离从大到小排好，取后 M 个（即最小的 M 个）
+        // 或者从小到大取前 M 个
+        std::vector<std::pair<dist_t, InternalId>> closest_results;
+        size_t closest_count = std::min(M, remaining.size());
+        // 从 remaining 末尾取（距离最小的）
+        for (size_t i = 0; i < closest_count; ++i) {
+            size_t idx = remaining.size() - 1 - i;
+            closest_results.push_back(remaining[idx]);
+        }
+        
+        // 6. 合并结果放入 candidates（先放启发式的，再放最近的）
+        for (const auto& p : heuristic_results) {
+            candidates.push(p);
+        }
+        for (const auto& p : closest_results) {
+            candidates.push(p);
+        }
     }
 
 

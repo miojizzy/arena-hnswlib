@@ -111,6 +111,114 @@ TEST(HierarchicalNSWTest, AddPointExceedsMaxElements) {
     EXPECT_THROW(hnsw.addPoint(point2, 1), std::runtime_error);
 }
 
+// ============================================================================
+// Layer0NeighborMode 测试
+// ============================================================================
+
+TEST(HierarchicalNSWTest, Layer0NeighborModeDoubleM) {
+    // 模式1: 0层使用 2*M 个邻居（默认模式）
+    size_t M = 4;
+    size_t elementSize = 100;
+    LinkLists linkLists(M, elementSize, Layer0NeighborMode::kDoubleM);
+    
+    // 0层邻居容量应为 2*M
+    EXPECT_EQ(linkLists.getM(0), 2 * M);
+    // 其他层邻居容量应为 M
+    if (linkLists.getMaxLevel() > 0) {
+        EXPECT_EQ(linkLists.getM(1), M);
+    }
+    EXPECT_EQ(linkLists.getMode(), Layer0NeighborMode::kDoubleM);
+}
+
+TEST(HierarchicalNSWTest, Layer0NeighborModeHeuristicOnly) {
+    // 模式2: 0层只使用 M 个邻居
+    size_t M = 4;
+    size_t elementSize = 100;
+    LinkLists linkLists(M, elementSize, Layer0NeighborMode::kHeuristicOnly);
+    
+    // 0层邻居容量应为 M
+    EXPECT_EQ(linkLists.getM(0), M);
+    // 其他层邻居容量应为 M
+    if (linkLists.getMaxLevel() > 0) {
+        EXPECT_EQ(linkLists.getM(1), M);
+    }
+    EXPECT_EQ(linkLists.getMode(), Layer0NeighborMode::kHeuristicOnly);
+}
+
+TEST(HierarchicalNSWTest, Layer0NeighborModeHeuristicPlusClosest) {
+    // 模式3: 0层使用 M 个启发式 + M 个最近邻居 = 2*M
+    size_t M = 4;
+    size_t elementSize = 100;
+    LinkLists linkLists(M, elementSize, Layer0NeighborMode::kHeuristicPlusClosest);
+    
+    // 0层邻居容量应为 2*M
+    EXPECT_EQ(linkLists.getM(0), 2 * M);
+    // 其他层邻居容量应为 M
+    if (linkLists.getMaxLevel() > 0) {
+        EXPECT_EQ(linkLists.getM(1), M);
+    }
+    EXPECT_EQ(linkLists.getMode(), Layer0NeighborMode::kHeuristicPlusClosest);
+}
+
+TEST(HierarchicalNSWTest, DefaultModeIsDoubleM) {
+    // 默认模式应为 kDoubleM，保持向后兼容
+    size_t M = 4;
+    size_t elementSize = 100;
+    LinkLists linkLists(M, elementSize);  // 不指定模式
+    
+    EXPECT_EQ(linkLists.getM(0), 2 * M);
+    EXPECT_EQ(linkLists.getMode(), Layer0NeighborMode::kDoubleM);
+}
+
+TEST(HierarchicalNSWTest, BuildIndexWithDifferentModes) {
+    size_t dim = 8;
+    size_t max_elements = 50;
+    size_t M = 4;
+    size_t ef = 10;
+    
+    // 构造测试数据
+    std::vector<std::vector<float>> points;
+    for (size_t i = 0; i < max_elements; ++i) {
+        std::vector<float> point(dim);
+        for (size_t j = 0; j < dim; ++j) {
+            point[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        points.push_back(point);
+    }
+    
+    // 测试三种模式都能正常构建索引并搜索
+    for (int mode_idx = 0; mode_idx < 3; ++mode_idx) {
+        Layer0NeighborMode mode;
+        switch (mode_idx) {
+            case 0: mode = Layer0NeighborMode::kDoubleM; break;
+            case 1: mode = Layer0NeighborMode::kHeuristicOnly; break;
+            case 2: mode = Layer0NeighborMode::kHeuristicPlusClosest; break;
+        }
+        
+        HierarchicalNSW<float, InnerProductSpace<float>> hnsw(
+            InnerProductSpace<float>(dim), max_elements, M, ef, 42, mode);
+        
+        for (size_t i = 0; i < points.size(); ++i) {
+            hnsw.addPoint(points[i].data(), static_cast<uint32_t>(i));
+        }
+        
+        // 验证搜索功能正常
+        auto result = hnsw.searchKnn(points[0].data(), 5);
+        EXPECT_GE(result.size(), 1);
+        
+        // 查询点本身应该是最接近的点之一
+        bool found_self = false;
+        while (!result.empty()) {
+            if (result.top().second == 0) {
+                found_self = true;
+                break;
+            }
+            result.pop();
+        }
+        EXPECT_TRUE(found_self) << "Mode " << mode_idx << " failed to find self";
+    }
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
