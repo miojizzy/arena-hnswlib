@@ -8,9 +8,24 @@
 #include <numeric>
 #include <set>
 #include <algorithm>
+#include <atomic>
+#include <array>
+#include <mutex>
+#include <vector>
 
 namespace arena_hnswlib {
 
+// ---------------------------------------------------------------------------
+// Tuning knobs
+// ---------------------------------------------------------------------------
+
+// Number of lock-striping buckets for neighbor-list concurrency.
+// Node id maps to bucket via  id & (kLockStripes - 1)  (must be a power of 2).
+// Memory cost: kLockStripes × sizeof(std::mutex) = 65536 × 40 B ≈ 2.5 MB.
+// Collision probability per pair of nodes: 1 / kLockStripes ≈ 0.0015 %.
+static constexpr size_t kLockStripes = 65536;
+
+// ---------------------------------------------------------------------------
 // 0层邻居选择模式
 enum class Layer0NeighborMode {
   kDoubleM,              // 0层使用 2*M 个启发式邻居（默认，现有逻辑）
@@ -175,7 +190,18 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     LinkLists link_lists_;
 
     std::vector<size_t> point_order_;
-    size_t cur_element_count_;
+    std::atomic<size_t> cur_element_count_;
+
+    // Entry-point initialization barrier: the internal_id=0 node must have its
+    // point data fully written before any other thread begins beam search.
+    std::atomic<bool> entry_ready_;
+
+    // Lock striping for neighbor lists — see kLockStripes at top of file.
+    mutable std::array<std::mutex, kLockStripes> link_list_locks_;
+
+    inline std::mutex& getLinkListMutex(InternalId id) const {
+        return link_list_locks_[id & (kLockStripes - 1)];
+    }
 
  public:
     HierarchicalNSW(SpaceT space, size_t elementSize,
@@ -187,7 +213,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
           M_(M), efConstruction_(efConstruction), efSearch_(efConstruction), random_seed_(random_seed),
           layer0_mode_(layer0_mode),
           point_store_(dim_, elementSize_), label_store_(1, elementSize_),
-          link_lists_(M, elementSize_, layer0_mode), point_order_(elementSize_), cur_element_count_(0) {
+          link_lists_(M, elementSize_, layer0_mode), point_order_(elementSize_),
+          cur_element_count_(0), entry_ready_(false) {
         
         // 填充point_order_，并打乱顺序
         std::iota(point_order_.begin(), point_order_.end(), 0);
@@ -199,11 +226,15 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     void setEfSearch(size_t ef) override { efSearch_ = ef; }
 
     void addPoint(const void *data_point, LabelType label_type) override {
-        if (cur_element_count_ >= elementSize_) {
+        // Atomically claim the next slot.  fetch_add returns the OLD value (idx),
+        // so idx==0 means this thread is inserting the very first point.
+        size_t idx = cur_element_count_.fetch_add(1, std::memory_order_acq_rel);
+        if (idx >= elementSize_) {
+            cur_element_count_.fetch_sub(1, std::memory_order_relaxed);
             throw std::runtime_error("Maximum number of elements reached");
         }
 
-        InternalId internal_id = point_order_[cur_element_count_++];
+        InternalId internal_id = point_order_[idx];
         // Store the data point
         if (!point_store_.setData(internal_id, static_cast<const dist_t*>(data_point))) {
             throw std::runtime_error("Failed to store data point");
@@ -213,11 +244,14 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             throw std::runtime_error("Failed to store label");
         }
 
-        // printf("Adding point %u with label %u at internal id %u\n", cur_element_count_-1, label_type, internal_id);
-
-        if (cur_element_count_ == 1) {
+        if (idx == 0) {
+            // Signal that the entry point (internal_id=0) data is ready.
+            entry_ready_.store(true, std::memory_order_release);
             return; // 第一个点不需要建立连接
         }
+
+        // Ensure the entry point's data is fully written before beam search starts.
+        while (!entry_ready_.load(std::memory_order_acquire)) { /* spin */ }
 
         updatePoint(data_point, internal_id);
     }
@@ -254,6 +288,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         searchCandidates.emplace(ep_dist, enterpoint_id);
         candidates.emplace(ep_dist, enterpoint_id);
 
+        std::vector<InternalId> neighbors;
+        neighbors.reserve(link_lists_.getM(level));
         while (!searchCandidates.empty()) {
             auto [c_dist, search_id] = searchCandidates.top();
             searchCandidates.pop();
@@ -262,9 +298,14 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
                 break;
             }
 
-            const LinkListView& ll = link_lists_.getLinkList(search_id, level);
-            for (size_t i = 0; i < ll.size; ++i) {
-                InternalId cand_id = ll.data[i];
+            // Snapshot neighbor list under lock, then compute distances lock-free.
+            neighbors.clear();
+            {
+                std::unique_lock<std::mutex> lock(getLinkListMutex(search_id));
+                const LinkListView& ll = link_lists_.getLinkList(search_id, level);
+                neighbors.assign(ll.data, ll.data + ll.size);
+            }
+            for (InternalId cand_id : neighbors) {
                 if (visited_table.isVisited(cand_id)) continue;
                 visited_table.mark(cand_id);
                 dist_t d = SpaceT::distFunc(point_store_.getData(internal_id),
@@ -290,15 +331,21 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             getNeighborsByHeuristic2(candidates, M_cur);
         }
 
-        LinkListView& link_list = link_lists_.getLinkList(internal_id, level);
-        link_list.size = 0;
-        while (!candidates.empty()) {
-            auto candidate_id = candidates.top().second;
-            link_list.data[link_list.size++] = candidate_id;
-            candidates.pop();
+        // Write new node's forward links under its stripe lock.
+        std::vector<InternalId> new_neighbors;
+        {
+            std::unique_lock<std::mutex> lock(getLinkListMutex(internal_id));
+            LinkListView& link_list = link_lists_.getLinkList(internal_id, level);
+            link_list.size = 0;
+            while (!candidates.empty()) {
+                auto candidate_id = candidates.top().second;
+                link_list.data[link_list.size++] = candidate_id;
+                new_neighbors.push_back(candidate_id);
+                candidates.pop();
+            }
         }
-        for (size_t i = 0; i < link_list.size; ++i) {
-            InternalId candidate_id = link_list.data[i];
+        // Add reverse edges; each existing node is locked individually.
+        for (InternalId candidate_id : new_neighbors) {
             updateExistPointAtLevel(candidate_id, internal_id, level);
         }
     }
@@ -307,6 +354,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         // Update the neighbor list for an existing node that just gained a new candidate (new_id).
         // Fast-path (hnswlib parity): if the list is not yet full, just append.
         // Only run the expensive heuristic when the list is already at capacity.
+        std::unique_lock<std::mutex> lock(getLinkListMutex(internal_id));
         LinkListView& link_list = link_lists_.getLinkList(internal_id, level);
         const size_t Mcurmax = link_lists_.getM(level);
 
@@ -347,11 +395,15 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     std::pair<dist_t, InternalId> 
     searchNearestAtLevel(const void* query_data, InternalId nearest_id, dist_t nearest_dist, size_t level) const {
         auto changed = true;
+        std::vector<InternalId> neighbors;
         while (changed) {
             changed = false;
-            const LinkListView& link_list = link_lists_.getLinkList(nearest_id, level);
-            for (size_t i = 0; i < link_list.size; ++i) {
-                InternalId candidate_id = link_list.data[i];
+            {
+                std::unique_lock<std::mutex> lock(getLinkListMutex(nearest_id));
+                const LinkListView& ll = link_lists_.getLinkList(nearest_id, level);
+                neighbors.assign(ll.data, ll.data + ll.size);
+            }
+            for (InternalId candidate_id : neighbors) {
                 dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (dist < nearest_dist) {
                     nearest_dist = dist;

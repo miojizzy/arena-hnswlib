@@ -1,9 +1,15 @@
 # 活跃上下文
 
 ### 当前工作重点
-- 多线程并发安全：VisitedTable 已改为请求粒度局部变量，searchKnn 线程安全
-- VisitedTable 进一步优化为 bitmap（uint64_t），内存减少 8x，cache 更友好
-- 所有核心算法已实现并测试通过，9/9 单元测试绿色
+- 完成并发 addPoint 支持（TASK013 - 2026-03-05）
+  - `kLockStripes = 65536` 条带锁常量放置在文件顶部 Tuning knobs 区块
+  - `cur_element_count_` 改为 `std::atomic<size_t>`，`fetch_add` 原子分配内部 ID
+  - `entry_ready_` atomic bool 屏障：保证 id=0 的 point data 写入对其他线程可见
+  - `link_list_locks_`：`std::array<std::mutex, 65536>`（≈2.5 MB），id & (kLockStripes-1) 映射桶
+  - 读邻居时：锁内快照 → 锁外算距离（持锁时间极短）
+  - `updateExistPointAtLevel` 全程持节点条带锁
+  - 新增 `ConcurrentTest/HNSWConcurrentAddPoint` 测试：8 线程并发插入同一索引
+  - 85/85 测试全绿
 
 ### 最近变更
 - 完成 AddPoint 性能修复（TASK011 - 2026-02-26）
