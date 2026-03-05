@@ -182,6 +182,58 @@ TEST(ConcurrentTest, HNSWParallelConcurrentSearch) {
         << "Concurrent HNSW searches produced incorrect results";
 }
 
+// -----------------------------------------------------------------------
+// 测试4：多线程并发 addPoint 到同一个 HNSW 索引
+//        验证 Lock Striping 保护下，构建出的索引仍具有合理召回率
+// -----------------------------------------------------------------------
+TEST(ConcurrentTest, HNSWConcurrentAddPoint) {
+    constexpr size_t DIM         = 32;
+    constexpr size_t NUM_POINTS  = 400;
+    constexpr size_t M           = 8;
+    constexpr size_t EF          = 20;
+    constexpr int    NUM_THREADS = 8;
+    constexpr size_t K           = 1;
+    constexpr size_t PER_THREAD  = NUM_POINTS / NUM_THREADS; // 50 points each
+
+    // 预生成所有向量
+    std::vector<std::vector<float>> vectors(NUM_POINTS);
+    for (size_t i = 0; i < NUM_POINTS; ++i) {
+        vectors[i] = makeVector(DIM, static_cast<unsigned>(i + 5000));
+    }
+
+    L2Space<float> space(DIM);
+    HierarchicalNSW<float, L2Space<float>> hnsw(space, NUM_POINTS, M, EF, 42);
+
+    // 多线程并发插入：每个线程负责一段连续索引
+    std::vector<std::thread> threads;
+    threads.reserve(NUM_THREADS);
+    for (int t = 0; t < NUM_THREADS; ++t) {
+        threads.emplace_back([&, t]() {
+            size_t start = static_cast<size_t>(t) * PER_THREAD;
+            size_t end   = start + PER_THREAD;
+            for (size_t i = start; i < end; ++i) {
+                hnsw.addPoint(vectors[i].data(), static_cast<LabelType>(i));
+            }
+        });
+    }
+    for (auto& th : threads) th.join();
+
+    // 验证：对每隔 40 个点做精确自查询，top-1 应能找回自身
+    // （允许少量召回失败，因为 heuristic 邻居选择在并发下仍是近似的）
+    int hits = 0;
+    const int NUM_QUERIES = 10;
+    for (int q = 0; q < NUM_QUERIES; ++q) {
+        size_t idx = static_cast<size_t>(q) * (NUM_POINTS / NUM_QUERIES);
+        auto result = hnsw.searchKnn(vectors[idx].data(), K);
+        if (!result.empty() && result.top().second == static_cast<LabelType>(idx)) {
+            ++hits;
+        }
+    }
+    // 并发构建下至少 70% 命中率（串行通常 100%，并发允许少量降级）
+    EXPECT_GE(hits, NUM_QUERIES * 7 / 10)
+        << "Concurrent HNSW build recall too low: " << hits << "/" << NUM_QUERIES;
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
