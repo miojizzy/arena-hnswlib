@@ -5,6 +5,7 @@
 ## 待处理
 
 ## 已完成
+- [TASK014] 优化 getNeighborsByHeuristic2 堆操作 - 2026-03-11完成（移除不必要的 queue_closest 堆，改用 vector + reverse，85测试全通过）
 - [TASK013] 并发 addPoint（Lock Striping）- 2026-03-05完成（65536桶条带锁+原子计数+entry_ready屏障，85测试全通过）
 - [TASK012] 0层邻居选择模式扩展 - 2026-03-04完成（实现三种邻居选择模式：kDoubleM、kHeuristicOnly、kHeuristicPlusClosest，85个测试全通过）
 - [TASK011] 修复 AddPoint 性能（慢一倍问题）- 2026-02-26完成（层级分配 bug + updateExistPointAtLevel 快速路径 + heuristic early-exit，BuildIndex -32%）

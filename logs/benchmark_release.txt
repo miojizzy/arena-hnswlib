@@ -1,7 +1,7 @@
 ========================================
 Running math utils benchmarks...
 ========================================
-2026-02-26T11:35:59+08:00
+2026-03-11T15:38:12+08:00
 Running ./benchmark_math_utils
 Run on (8 X 2250.04 MHz CPU s)
 CPU Caches:
@@ -9,17 +9,17 @@ CPU Caches:
   L1 Instruction 32 KiB (x4)
   L2 Unified 1024 KiB (x4)
   L3 Unified 32768 KiB (x0)
-Load Average: 8.45, 7.23, 7.29
+Load Average: 13.27, 13.89, 13.51
 ------------------------------------------------------
 Benchmark            Time             CPU   Iterations
 ------------------------------------------------------
-BM_Add           0.134 ns        0.134 ns   5212053436
-BM_Multiply      0.134 ns        0.134 ns   5208042357
+BM_Add           0.135 ns        0.134 ns   5214618734
+BM_Multiply      0.135 ns        0.135 ns   5193096310
 
 ========================================
 Running index benchmarks...
 ========================================
-2026-02-26T11:36:01+08:00
+2026-03-11T15:32:22+08:00
 Running ./benchmark_index
 Run on (8 X 2250.04 MHz CPU s)
 CPU Caches:
@@ -27,33 +27,33 @@ CPU Caches:
   L1 Instruction 32 KiB (x4)
   L2 Unified 1024 KiB (x4)
   L3 Unified 32768 KiB (x0)
-Load Average: 8.45, 7.23, 7.29
+Load Average: 12.76, 13.91, 13.31
 ---------------------------------------------------------------------------------------------
 Benchmark                                   Time             CPU   Iterations UserCounters...
 ---------------------------------------------------------------------------------------------
-BruteForceFixture/BuildIndex             9912 ns        10030 ns        69715 items_per_second=99.705M/s
-BruteForceFixture/QuerySingle            8242 ns         8242 ns        84792 items_per_second=121.33k/s
-BruteForceFixture/QueryBatch            81176 ns        81176 ns         8580 items_per_second=123.189k/s
-HNSWFixture/BuildIndex               41474180 ns     41476030 ns           17 items_per_second=24.1103k/s
-HNSWFixture/QuerySingle                 31371 ns        31370 ns        21761 items_per_second=31.8777k/s
-HNSWFixture/QueryBatch                 315707 ns       315704 ns         2171 items_per_second=31.6753k/s
-BM_BruteForce_QueryVaryingK/1            3.56 us         3.56 us       191004
-BM_BruteForce_QueryVaryingK/5            3.95 us         3.95 us       181515
-BM_BruteForce_QueryVaryingK/10           4.25 us         4.25 us       161440
-BM_BruteForce_QueryVaryingK/50           4.90 us         4.90 us       143028
-BM_BruteForce_QueryVaryingK/100          5.33 us         5.33 us       131451
-BM_HNSW_QueryVaryingK/1                  9.37 us         9.37 us        76179
-BM_HNSW_QueryVaryingK/5                  9.27 us         9.27 us        74644
-BM_HNSW_QueryVaryingK/10                 9.44 us         9.44 us        74499
-BM_HNSW_QueryVaryingK/50                 9.39 us         9.39 us        73510
-BM_HNSW_QueryVaryingK/100                9.43 us         9.43 us        74107
-BM_BruteForce_VaryingDataSize/100       0.893 us        0.893 us       762069
-BM_BruteForce_VaryingDataSize/250        2.24 us         2.24 us       318425
-BM_BruteForce_VaryingDataSize/500        4.26 us         4.26 us       162788
-BM_BruteForce_VaryingDataSize/1000       7.91 us         7.91 us        90665
-BM_HNSW_VaryingDataSize/100              3.64 us         3.64 us       193067
-BM_HNSW_VaryingDataSize/250              6.62 us         6.62 us       106166
-BM_HNSW_VaryingDataSize/500              9.40 us         9.40 us        75405
-BM_HNSW_VaryingDataSize/1000             13.9 us         13.9 us        50121
-BM_Normalized_vs_Raw/0                   4.23 us         4.23 us       163494 Raw
-BM_Normalized_vs_Raw/1                   4.54 us         4.54 us       161829 Normalized
+BruteForceFixture/BuildIndex            0.010 ms        0.010 ms        69982 items_per_second=99.6672M/s
+BruteForceFixture/QuerySingle           0.008 ms        0.008 ms        83846 items_per_second=119.358k/s
+BruteForceFixture/QueryBatch            0.082 ms        0.082 ms         8453 items_per_second=121.622k/s
+HNSWFixture/BuildIndex                   39.4 ms         39.4 ms           18 items_per_second=25.404k/s
+HNSWFixture/QuerySingle                 0.032 ms        0.032 ms        21480 items_per_second=31.1841k/s
+HNSWFixture/QueryBatch                  0.315 ms        0.315 ms         2178 items_per_second=31.7389k/s
+BM_BruteForce_QueryVaryingK/1            3.84 us         3.84 us       194197
+BM_BruteForce_QueryVaryingK/5            3.89 us         3.89 us       170978
+BM_BruteForce_QueryVaryingK/10           4.49 us         4.49 us       163779
+BM_BruteForce_QueryVaryingK/50           4.84 us         4.84 us       138214
+BM_BruteForce_QueryVaryingK/100          5.22 us         5.22 us       127944
+BM_HNSW_QueryVaryingK/1                  9.38 us         9.38 us        74859
+BM_HNSW_QueryVaryingK/5                  9.47 us         9.47 us        72783
+BM_HNSW_QueryVaryingK/10                 9.45 us         9.45 us        72284
+BM_HNSW_QueryVaryingK/50                 9.64 us         9.64 us        72103
+BM_HNSW_QueryVaryingK/100                9.74 us         9.74 us        71097
+BM_BruteForce_VaryingDataSize/100       0.909 us        0.909 us       776533
+BM_BruteForce_VaryingDataSize/250        2.31 us         2.31 us       313513
+BM_BruteForce_VaryingDataSize/500        4.39 us         4.39 us       157524
+BM_BruteForce_VaryingDataSize/1000       8.38 us         8.38 us        83379
+BM_HNSW_VaryingDataSize/100              3.55 us         3.55 us       192640
+BM_HNSW_VaryingDataSize/250              6.60 us         6.60 us       107659
+BM_HNSW_VaryingDataSize/500              9.71 us         9.71 us        74365
+BM_HNSW_VaryingDataSize/1000             14.6 us         14.6 us        49773
+BM_Normalized_vs_Raw/0                   4.37 us         4.37 us       157438 Raw
+BM_Normalized_vs_Raw/1                   4.50 us         4.50 us       158255 Normalized

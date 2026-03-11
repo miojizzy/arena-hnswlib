@@ -449,25 +449,30 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         if (top_candidates.size() <= M) {
             return top_candidates;
         }
-        BigTopPQueue<std::pair<dist_t, InternalId>> queue_closest;
-        std::vector<std::pair<dist_t, InternalId>> return_list;
-        while (top_candidates.size() > 0) {
-            queue_closest.emplace(-top_candidates.top().first, top_candidates.top().second);
+
+        // 将候选者转移到vector中（大顶堆弹出顺序是从大到小）
+        std::vector<std::pair<dist_t, InternalId>> candidates;
+        candidates.reserve(top_candidates.size());
+        while (!top_candidates.empty()) {
+            candidates.push_back(top_candidates.top());
             top_candidates.pop();
         }
+        // 反转使其按距离从小到大排列（最近的在前）
+        std::reverse(candidates.begin(), candidates.end());
 
-        while (queue_closest.size()) {
-            if (return_list.size() >= M)
+        // 启发式选择
+        std::vector<std::pair<dist_t, InternalId>> return_list;
+        for (const auto& current_pair : candidates) {
+            if (return_list.size() >= M) {
                 break;
-            std::pair<dist_t, InternalId> curent_pair = queue_closest.top();
-            dist_t dist_to_query = -curent_pair.first;
-            queue_closest.pop();
+            }
+            dist_t dist_to_query = current_pair.first;
             bool good = true;
 
-            for (std::pair<dist_t, InternalId> second_pair : return_list) {
+            for (const auto& second_pair : return_list) {
                 dist_t curdist = SpaceT::distFunc(
                         point_store_.getData(second_pair.second),
-                        point_store_.getData(curent_pair.second),
+                        point_store_.getData(current_pair.second),
                         dim_);
                 if (curdist < dist_to_query) {
                     good = false;
@@ -475,14 +480,14 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
                 }
             }
             if (good) {
-                return_list.push_back(curent_pair);
+                return_list.push_back(current_pair);
             }
         }
 
-        for (std::pair<dist_t, InternalId> curent_pair : return_list) {
-            top_candidates.emplace(-curent_pair.first, curent_pair.second);
+        // 将结果放回 top_candidates
+        for (const auto& p : return_list) {
+            top_candidates.emplace(p.first, p.second);
         }
-        // 返回结果队列（如需用）
         return top_candidates;
     }
 
