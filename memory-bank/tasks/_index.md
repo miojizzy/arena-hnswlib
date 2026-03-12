@@ -3,9 +3,9 @@
 ## 进行中
 
 ## 待处理
-- [TASK015] 搜索调试统计与连通性分析 - 2026-03-11 添加（进行中）
 
 ## 已完成
+- [TASK015] 搜索调试统计与连通性分析 - 2026-03-12完成（searchKnnWithStats、analyzeMissedPoint、analyzeConnectivity，14测试全通过）
 - [TASK014] 优化 getNeighborsByHeuristic2 堆操作 - 2026-03-11完成（移除不必要的 queue_closest 堆，改用 vector + reverse，85测试全通过）
 - [TASK013] 并发 addPoint（Lock Striping）- 2026-03-05完成（65536桶条带锁+原子计数+entry_ready屏障，85测试全通过）
 - [TASK012] 0层邻居选择模式扩展 - 2026-03-04完成（实现三种邻居选择模式：kDoubleM、kHeuristicOnly、kHeuristicPlusClosest，85个测试全通过）
