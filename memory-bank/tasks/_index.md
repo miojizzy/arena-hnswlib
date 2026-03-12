@@ -3,6 +3,7 @@
 ## 进行中
 
 ## 待处理
+- [TASK015] 搜索调试统计与连通性分析 - 2026-03-11 添加（进行中）
 
 ## 已完成
 - [TASK014] 优化 getNeighborsByHeuristic2 堆操作 - 2026-03-11完成（移除不必要的 queue_closest 堆，改用 vector + reverse，85测试全通过）

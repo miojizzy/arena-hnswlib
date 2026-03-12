@@ -219,6 +219,154 @@ TEST(HierarchicalNSWTest, BuildIndexWithDifferentModes) {
     }
 }
 
+// ============================================================================
+// 搜索调试统计测试
+// ============================================================================
+
+TEST(HierarchicalNSWTest, SearchWithStats) {
+    size_t dim = 8;
+    size_t max_elements = 50;
+    size_t M = 4;
+    size_t ef = 10;
+    
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(
+        InnerProductSpace<float>(dim), max_elements, M, ef, 42);
+    
+    // 构造测试数据
+    std::vector<std::vector<float>> points;
+    for (size_t i = 0; i < max_elements; ++i) {
+        std::vector<float> point(dim);
+        for (size_t j = 0; j < dim; ++j) {
+            point[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        points.push_back(point);
+        hnsw.addPoint(point.data(), static_cast<uint32_t>(i));
+    }
+    
+    // 使用带统计的搜索
+    auto [result, stats] = hnsw.searchKnnWithStats(points[0].data(), 5);
+    
+    // 验证搜索结果
+    EXPECT_GE(result.size(), 1);
+    EXPECT_LE(result.size(), 5);
+    
+    // 验证统计信息
+    EXPECT_GT(stats.visited_nodes, 0);
+    EXPECT_GT(stats.base_level.dist_calcs, 0);
+    EXPECT_EQ(stats.visited_nodes, stats.visited_in_level0.size());
+    
+    // 高层统计（如果有高层）
+    if (stats.high_level_layers > 0) {
+        EXPECT_GT(stats.high_level_total.dist_calcs, 0);
+    }
+}
+
+TEST(HierarchicalNSWTest, AnalyzeMissedPoint) {
+    size_t dim = 8;
+    size_t max_elements = 50;
+    size_t M = 4;
+    size_t ef = 5;  // 较小的 ef，容易产生缺失
+    
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(
+        InnerProductSpace<float>(dim), max_elements, M, ef, 42);
+    
+    // 构造测试数据
+    std::vector<std::vector<float>> points;
+    for (size_t i = 0; i < max_elements; ++i) {
+        std::vector<float> point(dim);
+        for (size_t j = 0; j < dim; ++j) {
+            point[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        points.push_back(point);
+        hnsw.addPoint(point.data(), static_cast<uint32_t>(i));
+    }
+    
+    // 搜索并分析
+    auto [result, stats] = hnsw.searchKnnWithStats(points[0].data(), 5);
+    
+    // 分析一个缺失点（假设点 1 是缺失的）
+    float dist = InnerProductSpace<float>::distFunc(
+        points[0].data(), points[1].data(), dim);
+    auto analysis = hnsw.analyzeMissedPoint(1, stats, static_cast<double>(dist));
+    
+    // 验证分析结果
+    EXPECT_EQ(analysis.point_id, 1);
+    // 注意：InnerProduct 距离可能为负，只需验证已被计算
+    EXPECT_NE(analysis.dist, 0.0);
+    
+    // 如果被访问过，min_ef_to_reach 应该是 0
+    // 如果未被访问，min_ef_to_reach 应该大于 0
+    if (analysis.was_visited) {
+        EXPECT_EQ(analysis.min_ef_to_reach, 0);
+    } else if (analysis.reachable) {
+        EXPECT_GT(analysis.min_ef_to_reach, 0);
+    }
+}
+
+TEST(HierarchicalNSWTest, ConnectivityAnalysis) {
+    size_t dim = 8;
+    size_t max_elements = 50;
+    size_t M = 4;
+    size_t ef = 10;
+    
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(
+        InnerProductSpace<float>(dim), max_elements, M, ef, 42);
+    
+    // 构造测试数据
+    for (size_t i = 0; i < max_elements; ++i) {
+        std::vector<float> point(dim);
+        for (size_t j = 0; j < dim; ++j) {
+            point[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        hnsw.addPoint(point.data(), static_cast<uint32_t>(i));
+    }
+    
+    // 分析连通性
+    auto report = hnsw.analyzeConnectivity();
+    
+    // 验证报告结构
+    EXPECT_EQ(report.from_entry.size(), report.from_upper_layer.size());
+    EXPECT_GT(report.from_entry.size(), 0);
+    
+    // 每层都应该有统计信息
+    for (const auto& level_stats : report.from_entry) {
+        EXPECT_GT(level_stats.total_nodes, 0);
+        EXPECT_EQ(level_stats.reachable_nodes + level_stats.unreachable_nodes,
+                  level_stats.total_nodes);
+    }
+}
+
+TEST(HierarchicalNSWTest, SearchStatsConsistency) {
+    // 验证带统计和不带统计的搜索结果一致
+    size_t dim = 8;
+    size_t max_elements = 50;
+    size_t M = 4;
+    size_t ef = 10;
+    
+    HierarchicalNSW<float, InnerProductSpace<float>> hnsw(
+        InnerProductSpace<float>(dim), max_elements, M, ef, 42);
+    
+    // 构造测试数据
+    std::vector<std::vector<float>> points;
+    for (size_t i = 0; i < max_elements; ++i) {
+        std::vector<float> point(dim);
+        for (size_t j = 0; j < dim; ++j) {
+            point[j] = static_cast<float>(rand()) / RAND_MAX;
+        }
+        points.push_back(point);
+        hnsw.addPoint(point.data(), static_cast<uint32_t>(i));
+    }
+    
+    // 不带统计搜索
+    auto result1 = hnsw.searchKnn(points[0].data(), 5);
+    
+    // 带统计搜索
+    auto [result2, stats] = hnsw.searchKnnWithStats(points[0].data(), 5);
+    
+    // 结果数量应该一致
+    EXPECT_EQ(result1.size(), result2.size());
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -12,8 +12,84 @@
 #include <array>
 #include <mutex>
 #include <vector>
+#include <queue>
+#include <limits>
+#include <unordered_map>
 
 namespace arena_hnswlib {
+
+// ---------------------------------------------------------------------------
+// 调试统计数据结构
+// ---------------------------------------------------------------------------
+
+// 单层检索统计
+struct LevelSearchStats {
+  size_t dist_calcs = 0;   // 该层距离计算次数
+  size_t hops = 0;         // 该层跳转次数（贪心移动到更近点的次数）
+};
+
+// 搜索过程统计
+struct SearchDebugStats {
+  // ========== 高层统计（level >= 1，贪心下降阶段）==========
+  size_t high_level_layers = 0;             // 经过的层数
+
+  LevelSearchStats high_level_total;        // 高层总计
+
+  size_t high_level_dist_max_layer = 0;     // 距离计算最多的层号
+  size_t high_level_dist_max_count = 0;     // 该层距离计算次数
+
+  size_t high_level_hops_max_layer = 0;     // 跳转最多的层号
+  size_t high_level_hops_max_count = 0;     // 该层跳转次数
+
+  // 逐层详细统计
+  std::vector<LevelSearchStats> level_stats;
+
+  // ========== 底层统计（level 0，beam search 阶段）==========
+  LevelSearchStats base_level;              // level 0 统计
+
+  size_t visited_nodes = 0;                 // 访问过的节点数
+  size_t max_hops_from_entry = 0;           // 访问节点中距入口点最大跳数
+
+  // ========== 搜索路径记录（用于后续缺失分析）==========
+  InternalId level0_entry_point = 0;        // 进入 level 0 的入口点ID
+  std::vector<InternalId> visited_in_level0; // level 0 访问过的节点ID列表
+};
+
+// 缺失点分析结果
+struct MissedPointAnalysis {
+  InternalId point_id = 0;            // 缺失点的 internal id
+  double dist = 0.0;                  // 该点到查询点的距离
+  size_t ground_truth_rank = 0;       // 该点在真实最近邻中的排名
+
+  size_t hops_from_entry = 0;         // 从 level 0 入口点到该点的最短跳数
+  size_t min_ef_to_reach = 0;         // 要找到该点需要的最小 ef
+  bool was_visited = false;           // 搜索时是否访问过该节点（但被淘汰出 top-k）
+  bool reachable = false;             // 该点是否在 level 0 图中可达
+};
+
+// 单层连通性统计
+struct LevelConnectivityStats {
+  size_t level = 0;                   // 层号
+  size_t total_nodes = 0;             // 该层总节点数
+  size_t reachable_nodes = 0;         // 可达节点数
+  size_t unreachable_nodes = 0;       // 不可达节点数
+  std::vector<InternalId> unreachable_ids;  // 不可达节点ID列表
+};
+
+// 连通性报告
+struct ConnectivityReport {
+  // 从入口节点(id=0)出发的各层连通性
+  std::vector<LevelConnectivityStats> from_entry;
+
+  // 从上一层所有节点出发的各层连通性
+  std::vector<LevelConnectivityStats> from_upper_layer;
+};
+
+// 插入调试统计（预留）
+struct AddPointDebugStats {
+  size_t level = 0;                   // 新点所在层级
+  size_t total_dist_calcs = 0;        // 总距离计算次数
+};
 
 // ---------------------------------------------------------------------------
 // Tuning knobs
@@ -393,7 +469,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     }
 
     std::pair<dist_t, InternalId> 
-    searchNearestAtLevel(const void* query_data, InternalId nearest_id, dist_t nearest_dist, size_t level) const {
+    searchNearestAtLevel(const void* query_data, InternalId nearest_id, dist_t nearest_dist, size_t level, LevelSearchStats* stats = nullptr) const {
         auto changed = true;
         std::vector<InternalId> neighbors;
         while (changed) {
@@ -404,11 +480,13 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
                 neighbors.assign(ll.data, ll.data + ll.size);
             }
             for (InternalId candidate_id : neighbors) {
+                if (stats) ++stats->dist_calcs;
                 dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (dist < nearest_dist) {
                     nearest_dist = dist;
                     nearest_id = candidate_id;
                     changed = true;
+                    if (stats) ++stats->hops;
                 }
             }
         }
@@ -594,7 +672,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
     }
 
     BigTopPQueue<std::pair<dist_t, InternalId>>
-    searchKnnAtBaseLevel(const void* query_data, InternalId enterpoint_id, dist_t enterpoint_dist, size_t k) const {
+    searchKnnAtBaseLevel(const void* query_data, InternalId enterpoint_id, dist_t enterpoint_dist, size_t k, SearchDebugStats* stats = nullptr) const {
         auto level = 0;
         auto ef = std::max(k, efSearch_);
 
@@ -605,6 +683,12 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
         searchCandidates.emplace(enterpoint_dist, enterpoint_id);
         topCandidates.emplace(enterpoint_dist, enterpoint_id);
+
+        if (stats) {
+          stats->level0_entry_point = enterpoint_id;
+          stats->visited_in_level0.push_back(enterpoint_id);
+          ++stats->visited_nodes;
+        }
 
         while (!searchCandidates.empty()) {
             auto [c_dist, search_id] = searchCandidates.top();
@@ -623,6 +707,11 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
                     continue;
                 }
                 visited_table.mark(candidate_id);
+                if (stats) {
+                  ++stats->base_level.dist_calcs;
+                  stats->visited_in_level0.push_back(candidate_id);
+                  ++stats->visited_nodes;
+                }
                 dist_t dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), point_store_.getData(candidate_id), dim_);
                 if (topCandidates.size() < ef || dist < topCandidates.top().first) {
                     searchCandidates.emplace(dist, candidate_id);
@@ -634,6 +723,364 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             }
         }
         return topCandidates;
+    }
+
+    // =========================================================================
+    // 带调试统计的搜索接口
+    // =========================================================================
+
+    std::pair<BigTopPQueue<std::pair<dist_t, LabelType>>, SearchDebugStats>
+    searchKnnWithStats(const void* query_data, size_t k) const {
+        SearchDebugStats stats;
+        InternalId enterpoint_id = 0;
+
+        auto nearest_id = enterpoint_id;
+        auto nearest_dist = SpaceT::distFunc(static_cast<const dist_t*>(query_data), 
+                                             point_store_.getData(enterpoint_id), dim_);
+
+        // 高层搜索（level >= 1）
+        stats.level_stats.resize(link_lists_.getMaxLevel() + 1);
+        for (size_t level = link_lists_.getMaxLevel() + 1; level-- > 1; ) {
+            LevelSearchStats level_stat;
+            std::tie(nearest_dist, nearest_id) = searchNearestAtLevel(
+                query_data, nearest_id, nearest_dist, level, &level_stat);
+            stats.level_stats[level] = level_stat;
+
+            // 更新高层总计
+            stats.high_level_total.dist_calcs += level_stat.dist_calcs;
+            stats.high_level_total.hops += level_stat.hops;
+            ++stats.high_level_layers;
+
+            // 更新最大值
+            if (level_stat.dist_calcs > stats.high_level_dist_max_count) {
+                stats.high_level_dist_max_count = level_stat.dist_calcs;
+                stats.high_level_dist_max_layer = level;
+            }
+            if (level_stat.hops > stats.high_level_hops_max_count) {
+                stats.high_level_hops_max_count = level_stat.hops;
+                stats.high_level_hops_max_layer = level;
+            }
+        }
+
+        // 底层搜索（level 0）
+        auto topCandidates = searchKnnAtBaseLevel(query_data, nearest_id, nearest_dist, k, &stats);
+
+        // 计算各访问节点的跳数（BFS）
+        if (!stats.visited_in_level0.empty()) {
+            auto hops_map = computeHopsFromEntry(stats.level0_entry_point, 0);
+            for (InternalId visited_id : stats.visited_in_level0) {
+                auto it = hops_map.find(visited_id);
+                if (it != hops_map.end() && it->second > stats.max_hops_from_entry) {
+                    stats.max_hops_from_entry = it->second;
+                }
+            }
+        }
+
+        // Trim to exactly k results
+        while (topCandidates.size() > k) {
+            topCandidates.pop();
+        }
+
+        // Prepare final result with labels
+        BigTopPQueue<std::pair<dist_t, LabelType>> result;
+        while (!topCandidates.empty()) {
+            auto [dist, internal_id] = topCandidates.top();
+            topCandidates.pop();
+            result.emplace(dist, *label_store_.getData(internal_id));
+        }
+        return {result, stats};
+    }
+
+    // =========================================================================
+    // 缺失点分析
+    // =========================================================================
+
+    MissedPointAnalysis analyzeMissedPoint(InternalId missed_id,
+                                           const SearchDebugStats& stats,
+                                           double query_dist) const {
+        MissedPointAnalysis result;
+        result.point_id = missed_id;
+        result.dist = query_dist;
+
+        // 检查是否被访问过
+        auto it = std::find(stats.visited_in_level0.begin(),
+                            stats.visited_in_level0.end(), missed_id);
+        result.was_visited = (it != stats.visited_in_level0.end());
+
+        // BFS 计算跳数
+        auto hops_map = computeHopsFromEntry(stats.level0_entry_point, 0);
+        auto hop_it = hops_map.find(missed_id);
+        if (hop_it != hops_map.end()) {
+            result.hops_from_entry = hop_it->second;
+            result.reachable = true;
+        } else {
+            result.hops_from_entry = std::numeric_limits<size_t>::max();
+            result.reachable = false;
+        }
+
+        // 如果未被访问，计算最小 ef
+        if (!result.was_visited && result.reachable) {
+            result.min_ef_to_reach = computeMinEfToReach(
+                missed_id, static_cast<dist_t>(query_dist), stats.level0_entry_point);
+        }
+
+        return result;
+    }
+
+    std::vector<MissedPointAnalysis>
+    analyzeMissedPoints(const std::vector<InternalId>& missed_ids,
+                        const SearchDebugStats& stats,
+                        const void* query_data) const {
+        std::vector<MissedPointAnalysis> results;
+        results.reserve(missed_ids.size());
+
+        // 预计算跳数
+        auto hops_map = computeHopsFromEntry(stats.level0_entry_point, 0);
+
+        for (InternalId missed_id : missed_ids) {
+            MissedPointAnalysis result;
+            result.point_id = missed_id;
+            result.dist = static_cast<double>(SpaceT::distFunc(
+                static_cast<const dist_t*>(query_data),
+                point_store_.getData(missed_id), dim_));
+
+            // 检查是否被访问过
+            auto it = std::find(stats.visited_in_level0.begin(),
+                                stats.visited_in_level0.end(), missed_id);
+            result.was_visited = (it != stats.visited_in_level0.end());
+
+            // 跳数
+            auto hop_it = hops_map.find(missed_id);
+            if (hop_it != hops_map.end()) {
+                result.hops_from_entry = hop_it->second;
+                result.reachable = true;
+            } else {
+                result.hops_from_entry = std::numeric_limits<size_t>::max();
+                result.reachable = false;
+            }
+
+            // 最小 ef
+            if (!result.was_visited && result.reachable) {
+                result.min_ef_to_reach = computeMinEfToReach(
+                    missed_id, static_cast<dist_t>(result.dist), stats.level0_entry_point);
+            }
+
+            results.push_back(result);
+        }
+        return results;
+    }
+
+    // =========================================================================
+    // 连通性分析
+    // =========================================================================
+
+    ConnectivityReport analyzeConnectivity() const {
+        ConnectivityReport report;
+
+        // 从入口节点(id=0)出发的各层连通性
+        for (size_t level = 0; level <= link_lists_.getMaxLevel(); ++level) {
+            report.from_entry.push_back(analyzeLevelConnectivity({0}, level));
+        }
+
+        // 从上层节点出发的各层连通性
+        for (size_t level = 0; level <= link_lists_.getMaxLevel(); ++level) {
+            if (level == link_lists_.getMaxLevel()) {
+                // 最高层没有上层，用入口节点
+                report.from_upper_layer.push_back(analyzeLevelConnectivity({0}, level));
+            } else {
+                // 收集 level+1 层所有节点作为入口
+                std::vector<InternalId> upper_nodes = getNodesAtLevel(level + 1);
+                if (upper_nodes.empty()) {
+                    upper_nodes.push_back(0);  // 回退到入口节点
+                }
+                report.from_upper_layer.push_back(
+                    analyzeLevelConnectivity(upper_nodes, level));
+            }
+        }
+
+        return report;
+    }
+
+ private:
+    // 从指定入口点出发，用 BFS 计算到各节点的跳数
+    std::unordered_map<InternalId, size_t>
+    computeHopsFromEntry(InternalId entry_id, size_t level) const {
+        std::unordered_map<InternalId, size_t> hops;
+        if (cur_element_count_.load(std::memory_order_relaxed) == 0) {
+            return hops;
+        }
+
+        std::queue<std::pair<InternalId, size_t>> bfs_queue;
+        VisitedTable visited(elementSize_);
+
+        bfs_queue.push({entry_id, 0});
+        visited.mark(entry_id);
+        hops[entry_id] = 0;
+
+        while (!bfs_queue.empty()) {
+            auto [current_id, current_hops] = bfs_queue.front();
+            bfs_queue.pop();
+
+            // 获取邻居（需要加锁）
+            std::vector<InternalId> neighbors;
+            {
+                std::unique_lock<std::mutex> lock(getLinkListMutex(current_id));
+                const LinkListView& ll = link_lists_.getLinkList(current_id, level);
+                neighbors.assign(ll.data, ll.data + ll.size);
+            }
+
+            for (InternalId neighbor_id : neighbors) {
+                if (!visited.isVisited(neighbor_id)) {
+                    visited.mark(neighbor_id);
+                    hops[neighbor_id] = current_hops + 1;
+                    bfs_queue.push({neighbor_id, current_hops + 1});
+                }
+            }
+        }
+        return hops;
+    }
+
+    // 计算找到指定点需要的最小 ef
+    size_t computeMinEfToReach(InternalId target_id, dist_t target_dist,
+                               InternalId entry_id) const {
+        // 使用二分搜索找到最小 ef
+        size_t low = 1;
+        size_t high = elementSize_;
+        size_t result = std::numeric_limits<size_t>::max();
+
+        while (low <= high) {
+            size_t mid = low + (high - low) / 2;
+            if (canReachWithEf(target_id, target_dist, entry_id, mid)) {
+                result = mid;
+                high = mid - 1;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return result;
+    }
+
+    // 检查指定 ef 是否能找到目标点
+    bool canReachWithEf(InternalId target_id, dist_t target_dist,
+                        InternalId entry_id, size_t ef) const {
+        // 模拟 beam search
+        dist_t entry_dist = SpaceT::distFunc(point_store_.getData(entry_id),
+                                             point_store_.getData(target_id), dim_);
+
+        SmallTopPQueue<std::pair<dist_t, InternalId>> searchCandidates;
+        BigTopPQueue<std::pair<dist_t, InternalId>> topCandidates;
+        VisitedTable visited(elementSize_);
+        visited.mark(entry_id);
+
+        searchCandidates.emplace(entry_dist, entry_id);
+        topCandidates.emplace(entry_dist, entry_id);
+
+        while (!searchCandidates.empty()) {
+            auto [c_dist, search_id] = searchCandidates.top();
+            searchCandidates.pop();
+
+            if (topCandidates.size() >= ef && c_dist > topCandidates.top().first) {
+                break;
+            }
+
+            const LinkListView& link_list = link_lists_.getLinkList(search_id, 0);
+            for (size_t i = 0; i < link_list.size; ++i) {
+                InternalId candidate_id = link_list.data[i];
+                if (candidate_id == target_id) {
+                    return true;  // 找到目标点
+                }
+                if (visited.isVisited(candidate_id)) {
+                    continue;
+                }
+                visited.mark(candidate_id);
+                dist_t dist = SpaceT::distFunc(point_store_.getData(target_id),
+                                               point_store_.getData(candidate_id), dim_);
+                if (topCandidates.size() < ef || dist < topCandidates.top().first) {
+                    searchCandidates.emplace(dist, candidate_id);
+                    topCandidates.emplace(dist, candidate_id);
+                    if (topCandidates.size() > ef) {
+                        topCandidates.pop();
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // 获取指定层的所有节点
+    std::vector<InternalId> getNodesAtLevel(size_t level) const {
+        std::vector<InternalId> nodes;
+        size_t count = cur_element_count_.load(std::memory_order_relaxed);
+        for (InternalId id = 0; id < count; ++id) {
+            if (link_lists_.getLevel(id) >= level) {
+                nodes.push_back(id);
+            }
+        }
+        return nodes;
+    }
+
+    // 分析从指定入口节点集合出发的层连通性
+    LevelConnectivityStats analyzeLevelConnectivity(
+        const std::vector<InternalId>& entry_ids, size_t level) const {
+        LevelConnectivityStats stats;
+        stats.level = level;
+
+        // 计算该层总节点数
+        size_t count = cur_element_count_.load(std::memory_order_relaxed);
+        for (InternalId id = 0; id < count; ++id) {
+            if (link_lists_.getLevel(id) >= level) {
+                ++stats.total_nodes;
+            }
+        }
+
+        if (entry_ids.empty()) {
+            stats.unreachable_nodes = stats.total_nodes;
+            return stats;
+        }
+
+        // BFS 遍历
+        VisitedTable visited(elementSize_);
+        std::queue<InternalId> bfs_queue;
+
+        for (InternalId entry_id : entry_ids) {
+            if (link_lists_.getLevel(entry_id) >= level) {
+                bfs_queue.push(entry_id);
+                visited.mark(entry_id);
+            }
+        }
+
+        while (!bfs_queue.empty()) {
+            InternalId current_id = bfs_queue.front();
+            bfs_queue.pop();
+
+            std::vector<InternalId> neighbors;
+            {
+                std::unique_lock<std::mutex> lock(getLinkListMutex(current_id));
+                const LinkListView& ll = link_lists_.getLinkList(current_id, level);
+                neighbors.assign(ll.data, ll.data + ll.size);
+            }
+
+            for (InternalId neighbor_id : neighbors) {
+                if (!visited.isVisited(neighbor_id)) {
+                    visited.mark(neighbor_id);
+                    bfs_queue.push(neighbor_id);
+                }
+            }
+        }
+
+        // 统计可达和不可达节点
+        for (InternalId id = 0; id < count; ++id) {
+            if (link_lists_.getLevel(id) >= level) {
+                if (visited.isVisited(id)) {
+                    ++stats.reachable_nodes;
+                } else {
+                    ++stats.unreachable_nodes;
+                    stats.unreachable_ids.push_back(id);
+                }
+            }
+        }
+
+        return stats;
     }
 };
 
