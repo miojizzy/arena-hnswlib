@@ -359,6 +359,198 @@ for (const auto& level_stats : connectivity.from_entry) {
 
 ---
 
+## 调试功能详细说明
+
+### 适用场景
+
+| 场景 | 推荐功能 | 说明 |
+|------|----------|------|
+| 召回率分析 | `searchKnnWithStats` + `analyzeMissedPoint` | 分析缺失点是 ef 问题还是连通性问题 |
+| 索引健康检查 | `analyzeConnectivity` | 检测图中是否存在孤立节点 |
+| 性能调优 | `searchKnnWithStats` | 分析搜索过程的开销分布 |
+| ef 参数选择 | `analyzeMissedPoint` | 确定合适的 efSearch 值 |
+
+### 典型使用流程
+
+#### 场景一：召回缺失分析
+
+当搜索结果的召回率不达标时，可用以下流程分析原因：
+
+```cpp
+// Step 1: 构建索引
+HierarchicalNSW<float, InnerProductSpace<float>> index(...);
+for (size_t i = 0; i < n; ++i) {
+    index.addPoint(data[i], i);
+}
+
+// Step 2: 对测试查询执行带统计的搜索
+auto [results, stats] = index.searchKnnWithStats(query, k);
+
+// Step 3: 与 ground truth 对比，找出缺失点
+std::set<uint32_t> result_labels;
+while (!results.empty()) {
+    result_labels.insert(results.top().second);
+    results.pop();
+}
+std::vector<InternalId> missed_ids;
+for (auto gt_label : ground_truth) {
+    if (result_labels.find(gt_label) == result_labels.end()) {
+        missed_ids.push_back(label_to_internal_id[gt_label]);
+    }
+}
+
+// Step 4: 分析缺失原因
+for (InternalId missed_id : missed_ids) {
+    float dist = computeDistance(query, data[missed_id]);
+    auto analysis = index.analyzeMissedPoint(missed_id, stats, dist);
+    
+    if (!analysis.reachable) {
+        std::cout << "缺失点 " << missed_id << ": 图中不可达！连通性问题。\n";
+    } else if (analysis.was_visited) {
+        std::cout << "缺失点 " << missed_id << ": 已访问但被淘汰，考虑增大 k 或调整距离度量。\n";
+    } else if (analysis.min_ef_to_reach > current_ef) {
+        std::cout << "缺失点 " << missed_id << ": ef 太小，需要 ef >= " 
+                  << analysis.min_ef_to_reach << "（当前 ef=" << current_ef << "）\n";
+    } else {
+        std::cout << "缺失点 " << missed_id << ": 跳数=" << analysis.hops_from_entry 
+                  << "，可能需要调整索引参数 (M, efConstruction)。\n";
+    }
+}
+```
+
+#### 场景二：索引健康检查
+
+定期检查索引连通性，确保图结构正常：
+
+```cpp
+auto report = index.analyzeConnectivity();
+
+std::cout << "=== 连通性报告 ===\n";
+std::cout << "\n从入口节点出发:\n";
+for (const auto& ls : report.from_entry) {
+    std::cout << "  Level " << ls.level << ": " 
+              << ls.reachable_nodes << "/" << ls.total_nodes << " 可达";
+    if (ls.unreachable_nodes > 0) {
+        std::cout << " (警告: " << ls.unreachable_nodes << " 不可达)";
+    }
+    std::cout << "\n";
+}
+
+std::cout << "\n从上层节点出发:\n";
+for (const auto& ls : report.from_upper_layer) {
+    std::cout << "  Level " << ls.level << ": "
+              << ls.reachable_nodes << "/" << ls.total_nodes << " 可达";
+    if (ls.unreachable_nodes > 0) {
+        std::cout << " (警告: " << ls.unreachable_nodes << " 不可达)";
+    }
+    std::cout << "\n";
+}
+
+// 严重问题：level 0 有不可达节点
+if (report.from_entry[0].unreachable_nodes > 0) {
+    std::cerr << "严重警告: Level 0 存在不可达节点，搜索将永远无法找到这些点！\n";
+    std::cerr << "不可达节点 ID: ";
+    for (auto id : report.from_entry[0].unreachable_ids) {
+        std::cerr << id << " ";
+    }
+    std::cerr << "\n";
+}
+```
+
+#### 场景三：性能分析
+
+分析搜索开销分布：
+
+```cpp
+auto [results, stats] = index.searchKnnWithStats(query, k);
+
+std::cout << "=== 搜索性能分析 ===\n";
+
+// 高层开销
+if (stats.high_level_layers > 0) {
+    std::cout << "高层贪心下降:\n";
+    std::cout << "  经过层数: " << stats.high_level_layers << "\n";
+    std::cout << "  总距离计算: " << stats.high_level_total.dist_calcs << "\n";
+    std::cout << "  总跳转次数: " << stats.high_level_total.hops << "\n";
+    std::cout << "  距离计算最多的层: " << stats.high_level_dist_max_layer 
+              << " (" << stats.high_level_dist_max_count << " 次)\n";
+    std::cout << "  跳转最多的层: " << stats.high_level_hops_max_layer 
+              << " (" << stats.high_level_hops_max_count << " 次)\n";
+}
+
+// 底层开销
+std::cout << "底层 Beam Search:\n";
+std::cout << "  距离计算: " << stats.base_level.dist_calcs << "\n";
+std::cout << "  访问节点数: " << stats.visited_nodes << "\n";
+std::cout << "  最大跳数: " << stats.max_hops_from_entry << "\n";
+
+// 开销占比
+size_t total_dist = stats.high_level_total.dist_calcs + stats.base_level.dist_calcs;
+float high_ratio = 100.0 * stats.high_level_total.dist_calcs / total_dist;
+std::cout << "开销分布: 高层 " << high_ratio << "%, 底层 " << (100 - high_ratio) << "%\n";
+```
+
+### 性能开销说明
+
+| 功能 | 额外开销 | 建议使用时机 |
+|------|----------|--------------|
+| `searchKnnWithStats` | 约 5-15% | 调试、性能分析时 |
+| `analyzeMissedPoint` | O(N) BFS | 仅在召回缺失时按需调用 |
+| `analyzeConnectivity` | O(N×E) 全图遍历 | 索引构建后一次性检查 |
+
+**重要提示：**
+- `searchKnn` 无额外开销，生产环境推荐使用
+- `searchKnnWithStats` 会记录访问路径，有内存和计算开销
+- `analyzeMissedPoint` 内部使用 BFS 计算跳数，对大图较慢
+- `analyzeConnectivity` 是最昂贵的操作，建议离线使用
+
+### 统计指标解读
+
+#### SearchDebugStats 关键指标
+
+| 指标 | 含义 | 理想范围 | 异常信号 |
+|------|------|----------|----------|
+| `high_level_total.dist_calcs` | 高层距离计算总次数 | < 100 | 层数太多或每层邻居太多 |
+| `high_level_total.hops` | 高层贪心跳转次数 | < 20 | 图结构可能过于稀疏 |
+| `visited_nodes` | 底层访问节点数 | 接近 efSearch | 远大于 efSearch 可能有冗余 |
+| `max_hops_from_entry` | 最大跳数 | < 10 | 跳数过大说明搜索路径长 |
+
+#### MissedPointAnalysis 关键指标
+
+| 指标 | 含义 | 判断逻辑 |
+|------|------|----------|
+| `reachable` | 是否可达 | false → 图连通性问题 |
+| `was_visited` | 是否被访问过 | true → 被 top-k 淘汰，考虑增大 k |
+| `min_ef_to_reach` | 最小 ef | > efSearch → 需要增大 efSearch |
+| `hops_from_entry` | 跳数 | 大值 → 该点距离入口远，可能需要调整入口策略 |
+
+#### ConnectivityReport 关键指标
+
+| 指标 | 含义 | 异常处理 |
+|------|------|----------|
+| `from_entry[i].unreachable_nodes` | 从入口不可达数 | > 0 特别是 level 0 → 索引有问题 |
+| `from_upper_layer[i].unreachable_nodes` | 从上层不可达数 | 高于 from_entry → 层间连接问题 |
+
+### 常见问题诊断
+
+```
+问题：召回率低
+├── 检查连通性
+│   └── analyzeConnectivity() → unreachable_nodes > 0?
+│       ├── 是 → 图结构问题，检查 efConstruction 和 M
+│       └── 否 → 继续分析
+├── 分析缺失点
+│   └── analyzeMissedPoint() 
+│       ├── !reachable → 图连通性问题（罕见）
+│       ├── was_visited → top-k 太小，增大 k
+│       └── min_ef > efSearch → 增大 efSearch
+└── 性能分析
+    └── searchKnnWithStats() → max_hops 过大?
+        └── 是 → 考虑重建索引，增大 M 或 efConstruction
+```
+
+---
+
 ## 进度日志
 
 ### 2026-03-11
@@ -371,3 +563,4 @@ for (const auto& level_stats : connectivity.from_entry) {
 - 所有子任务完成
 - 代码已提交 (commit ec46e84)
 - 代码已推送到远端
+- 完善调试功能详细说明文档
